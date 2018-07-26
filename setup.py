@@ -11,6 +11,20 @@ DESCRIPTION = 'honeybadgermpc'
 REQUIRES_PYTHON = '>=3.7.0'
 VERSION = None
 
+REQUIRED = [
+    'gmpy',
+    'web3',
+]
+
+TEST_REQUIRES = ['pytest']
+DEV_REQUIRES = ['ipdb', 'ipython']
+DOCS_REQUIRE = ['Sphinx', 'sphinx-autobuild', 'sphinx_rtd_theme']
+EXTRAS = {
+    'test': TEST_REQUIRES,
+    'dev': DEV_REQUIRES + TEST_REQUIRES + DOCS_REQUIRE,
+    'docs': DOCS_REQUIRE,
+}
+
 here = os.path.abspath(os.path.dirname(__file__))
 
 try:
@@ -33,6 +47,8 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     python_requires=REQUIRES_PYTHON,
+    install_requires=REQUIRED,
+    extras_require=EXTRAS,
     classifiers=[
         'Development Status :: 1 - Planning',
         'Programming Language :: Python',
