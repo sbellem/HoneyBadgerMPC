@@ -13,16 +13,33 @@ VERSION = None
 
 REQUIRED = [
     'gmpy',
-    'web3',
 ]
 
-TEST_REQUIRES = ['pytest']
-DEV_REQUIRES = ['ipdb', 'ipython']
-DOCS_REQUIRE = ['Sphinx', 'sphinx-autobuild', 'sphinx_rtd_theme']
+TEST_REQUIRES = [
+    'flake8',
+    'pytest',
+    'pytest-asyncio',
+    'pytest-cov',
+]
+
+DEV_REQUIRES = [
+    'ipdb',
+    'ipython',
+]
+
+DOCS_REQUIRE = [
+    'Sphinx',
+    'sphinx-autobuild',
+    'sphinx_rtd_theme',
+]
+
+ETH_REQUIRES = ['web3', 'ethereum']
+
 EXTRAS = {
     'test': TEST_REQUIRES,
     'dev': DEV_REQUIRES + TEST_REQUIRES + DOCS_REQUIRE,
     'docs': DOCS_REQUIRE,
+    'eth': ETH_REQUIRES,
 }
 
 here = os.path.abspath(os.path.dirname(__file__))
