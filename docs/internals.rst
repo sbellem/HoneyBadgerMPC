@@ -39,6 +39,8 @@ Output
     :math:`n` :math:`t`-shared secret pairs that have been successfully multiplied
 
 .. automodule:: honeybadgermpc.beaver_functionality
+.. automodule:: honeybadgermpc.beaver
+.. automodule:: tests.test_beaver
 
 
 secretshare
