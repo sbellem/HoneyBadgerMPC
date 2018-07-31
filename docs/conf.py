@@ -93,19 +93,39 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 #
 # html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme = 'alabaster'
+#html_theme = 'sphinx_rtd_theme'
+#html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#html_logo = '_static/honeybadger.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+#html_theme_options = {
+    #'logo_only': True,
+#}
+
+# alabaster theme options
+html_theme_options = {
+    'logo': 'honeybadger.png',
+    #'logo_name': True,
+    'description': 'HoneyBadgerMPC',
+    #'description_font_style':,
+    'github_user': 'initc3',
+    'github_repo': 'HoneyBadgerMPC',
+    'badge_branch': 'dev',
+    'github_button': True,
+    'github_banner': True,
+    'travis_button': True,
+    'codecov_button': True,
+
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -116,6 +136,15 @@ html_static_path = []
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ],
+}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
