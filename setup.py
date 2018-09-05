@@ -28,6 +28,7 @@ TESTS_REQUIRES = [
 DEV_REQUIRES = [
     'ipdb',
     'ipython',
+    'cffi',
 ]
 
 DOCS_REQUIRE = [
