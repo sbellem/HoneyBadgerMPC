@@ -54,7 +54,6 @@ def test_decoding_message_with_none_elements():
     original_poly = Poly(integerMessage)
     assert(
         (original_poly - P).isZero()), "Decoded message does not match original message!"
-    return
 
 
 def corrupt(message, numErrors, numNones, minVal=0, maxVal=131):
