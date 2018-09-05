@@ -45,7 +45,9 @@ def test_decoding_message_with_none_elements():
     print("plain message is: %r" % (integerMessage,))
     print("encoded message is: %r" % (encoded,))  # cleaner output
 
-    corrupted = corrupt(encoded, k-5, 3)
+    num_errors = k - 5
+    num_nones = 3
+    corrupted = corrupt(encoded, num_errors, num_nones)
     print("corrupted message is: %r" % (corrupted,))
     solved, P, evil_nodes = decoding_message_with_none_elements(k-1, corrupted, p)
     assert solved, "Decoding failed"
@@ -54,6 +56,7 @@ def test_decoding_message_with_none_elements():
     original_poly = Poly(integerMessage)
     assert(
         (original_poly - P).isZero()), "Decoded message does not match original message!"
+    assert len(evil_nodes) == num_errors + num_nones
 
 
 def corrupt(message, numErrors, numNones, minVal=0, maxVal=131):
