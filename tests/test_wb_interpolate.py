@@ -47,7 +47,7 @@ def test_decoding_message_with_none_elements():
 
     corrupted = corrupt(encoded, k-5, 3)
     print("corrupted message is: %r" % (corrupted,))
-    solved, P = decoding_message_with_none_elements(k-1, corrupted, p)
+    solved, P, evil_nodes = decoding_message_with_none_elements(k-1, corrupted, p)
     assert(solved), "Decoding failed"
     Fp = GF(p)
     Poly = polynomialsOver(Fp)
