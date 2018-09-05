@@ -64,8 +64,3 @@ def corrupt(message, numErrors, numNones, minVal=0, maxVal=131):
     for i in range(0, numNones):
         message[indices[i+numErrors]][1] = None
     return message
-
-
-test_decoding()
-print("test_decoding_pass!!!!")
-test_decoding_message_with_none_elements()
