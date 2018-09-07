@@ -12,37 +12,6 @@ def random_element():
     return random.randint(0, order)
 
 
-def simple_router(N):
-    """
-    Builds a set of connected channels
-    @return (receives, sends)
-    """
-    # Create a mailbox for each party
-    mbox = [asyncio.Queue() for _ in range(N)]
-
-    def makeSend(i):
-        def _send(j, o):
-            # print('SEND %8s [%2d -> %2d]' % (o[0], i, j))
-            # random delay
-            asyncio.get_event_loop().call_later(
-                random.random()*1, mbox[j].put_nowait, (i, o))
-        return _send
-
-    def makeRecv(j):
-        async def _recv():
-            (i, o) = await mbox[j].get()
-            # print('RECV %8s [%2d -> %2d]' % (o[0], i, j))
-            return (i, o)
-        return _recv
-
-    sends = {}
-    receives = {}
-    for i in range(N):
-        sends[i] = makeSend(i)
-        receives[i] = makeRecv(i)
-    return (sends, receives)
-
-
 class Runtime():
     def __init__(self, id, N, t, send, recv):
         assert type(n) in (int, long)   # noqa TODO n is undefined
@@ -156,7 +125,7 @@ async def progtest(shared, N, myid, send, recv):
 #         return Solved, None
 
 
-def test():
+def test(simple_router):
     N = 4
     p = 73
     t = 1
