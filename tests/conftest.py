@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 
@@ -96,3 +97,41 @@ def triples_shares_files(request, GaloisField, triples_polys, triples_files_pref
     t = request.param['t']
     write_polys(
         triples_files_prefix, GaloisField.modulus, N, t, triples_polys)
+
+
+@fixture
+def simple_router():
+
+    def _simple_router(N):
+        """
+        Builds a set of connected channels
+
+        :return: broadcasting and receiving functions: ``(sends, receives)``
+        :rtype: tuple
+        """
+        # Create a mailbox for each party
+        mbox = [asyncio.Queue() for _ in range(N)]
+
+        def make_send(i):
+            def _send(j, o):
+                # print('SEND %8s [%2d -> %2d]' % (o[0], i, j))
+                # random delay
+                asyncio.get_event_loop().call_later(
+                    random.random()*1, mbox[j].put_nowait, (i, o))
+            return _send
+
+        def make_recv(j):
+            async def _recv():
+                i, o = await mbox[j].get()
+                # print('RECV %8s [%2d -> %2d]' % (o[0], i, j))
+                return i, o
+            return _recv
+
+        sends = {}
+        receives = {}
+        for i in range(N):
+            sends[i] = make_send(i)
+            receives[i] = make_recv(i)
+        return (sends, receives)
+
+    return _simple_router
