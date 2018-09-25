@@ -23,9 +23,9 @@ check:
 
 	$ git remote -v
 	origin  git@github.com:<github_username>/HoneyBadgerMPC.git (fetch)
-    origin  git@github.com:<github_username>/HoneyBadgerMPC.git (push)
-    upstream        git@github.com:initc3/HoneyBadgerMPC.git (fetch)
-    upstream        git@github.com:initc3/HoneyBadgerMPC.git (push)
+	origin  git@github.com:<github_username>/HoneyBadgerMPC.git (push)
+	upstream        git@github.com:initc3/HoneyBadgerMPC.git (fetch)
+	upstream        git@github.com:initc3/HoneyBadgerMPC.git (push)
 
 Identify the shared remote branch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
