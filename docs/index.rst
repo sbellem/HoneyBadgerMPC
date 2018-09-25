@@ -8,12 +8,33 @@
 
 .. mdinclude:: ../README.md
 
+
 .. toctree::
     :maxdepth: 2
-    :caption: Contents:
+    :caption: The Honeybadger of MPC Protocols
+
+    intro
+    performance
+    roadmap
+    subprotocols
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Tutorials
+
+    tutorials
+
+.. toctree::
+    :maxdepth: 2
+    :caption: API Reference
 
     internals
-    dev
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Contributing to HoneyBadgerMPC
+
+    development/index
 
 
 Indices and tables
