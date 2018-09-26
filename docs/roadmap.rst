@@ -1,6 +1,7 @@
-Roadmap
-=======
+.. Roadmap
+.. =======
 
+.. mdinclude:: ../ROADMAP.md
 
 Development tasks for HoneyBadgerMPC prototype
 ----------------------------------------------

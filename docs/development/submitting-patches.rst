@@ -141,7 +141,6 @@ help a lot when writing tests. For instance, learning to work with
 `pytest fixtures`_ can help greatly to simplify tests, and re-use test
 components throughout the test code.
 
-
 Documentation
 -------------
 .. todo:: docstrings guidelines etc
@@ -154,7 +153,6 @@ Git & Github references
 
 FAQ
 ---
-
 **Q.** Why some test functions import modules-under-test or related ones locally
 instead of importing at the top?
 

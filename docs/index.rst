@@ -6,7 +6,7 @@
 .. HoneyBadgerMPC
 .. ==============
 
-.. mdinclude:: ../README.md
+.. .. mdinclude:: ../README.md
 
 
 .. toctree::
@@ -14,9 +14,9 @@
     :caption: The Honeybadger of MPC Protocols
 
     intro
+    subprotocols
     performance
     roadmap
-    subprotocols
 
 .. toctree::
     :maxdepth: 2
@@ -30,11 +30,18 @@
 
     internals
 
+.. development/index
 .. toctree::
     :maxdepth: 2
     :caption: Contributing to HoneyBadgerMPC
 
-    development/index
+    development/getting-started
+    development/submitting-patches
+    development/reviewing-patches
+    development/rust-bindings
+    development/troubleshooting
+    ci
+    coverage
 
 
 Indices and tables
