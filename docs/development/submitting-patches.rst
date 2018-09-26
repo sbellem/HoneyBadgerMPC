@@ -6,9 +6,9 @@ to learn to work with both tools.
 
 Suggested Git/Github workflow
 -----------------------------
-A small example of a typical workflow is provided here. This is by no means a
-complete guide on how to work with Git and Github, and if needed one may
-consult the `Pro Git book`_ as a starting point.
+A small example of a possible workflow is provided here. This is by no means a
+complete guide on how to work with Git and Github. The `Pro Git book`_ can be
+a very useful reference, whether one is a beginner or an advanced user.
 
 Working with Git Remotes
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,11 +21,11 @@ check:
 
 .. code-block:: bash
 
-	$ git remote -v
-	origin  git@github.com:<github_username>/HoneyBadgerMPC.git (fetch)
-	origin  git@github.com:<github_username>/HoneyBadgerMPC.git (push)
-	upstream        git@github.com:initc3/HoneyBadgerMPC.git (fetch)
-	upstream        git@github.com:initc3/HoneyBadgerMPC.git (push)
+    $ git remote -v
+    origin  git@github.com:<github_username>/HoneyBadgerMPC.git (fetch)
+    origin  git@github.com:<github_username>/HoneyBadgerMPC.git (push)
+    upstream        git@github.com:initc3/HoneyBadgerMPC.git (fetch)
+    upstream        git@github.com:initc3/HoneyBadgerMPC.git (push)
 
 Identify the shared remote branch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ need to work on. As an example, if you need to contribute work to the
 	$ git checkout -b jubjub upstream/jubjub
 
 In order to keep your local copy up-to-date you should periodically sync it
-with the remote. First switch to (checkout) the local branch:
+with the remote. First switch to the local branch:
 
 .. code-block:: bash
 
@@ -60,9 +60,9 @@ see https://git-scm.com/book/en/v2/Git-Branching-Rebasing#_rebase_vs_merge.
 
 Create a new branch
 ^^^^^^^^^^^^^^^^^^^
-Create a new branch from the shared remote branch to which new code needs to
-be added. As an example, say you would have to work on issue #23 (Implement
-jubjub elliptic curve MPC programs), then you could do something similar to:
+Create a new branch from the shared remote branch to which you wish to
+contribute. As an example, say you are working on `issue #23 (Implement jubjub
+elliptic curve MPC programs)`_, then you could create a new branch like so:
 
 .. code-block:: bash
       
@@ -78,7 +78,7 @@ to your remote on Github, as this will serve as a backup:
 
 .. code-block:: bash
 
-	$ git push origin jubjub
+	$ git push origin issue-23-jujub-ec-mpc
 
 
 In addtion to backing up your work on Github you should stay in sync with
@@ -87,7 +87,7 @@ the shared remote branch. To do so, periodically ``fetch`` and ``rebase``:
 .. code-block:: bash
 
 	$ git fetch upstream
-	$ git rebase upstream/jubjub jubjub
+	$ git rebase upstream/jubjub issue-23-jujub-ec-mpc
 
 Git commit best practices
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -102,16 +102,19 @@ Signing commits
 
 Make a pull request
 ^^^^^^^^^^^^^^^^^^^
-Once you are done with your work, you can `make a pull request`_ against the
-shared remote branch that you have based your work on.
+Once you are done with your work, you have to push it to your remote:
 
-It is generally advisable to keep a pull request focused on one issue, and
-relatively small in order to facilitate the review process.
+.. code-block:: bash
+
+	$ git push origin issue-23-jujub-ec-mpc
+
+and then you can `make a pull request`_ to merge your work with the shared
+remote branch that you have based your work on.
 
 Pull requests go through 4 checks:
 
-* unit tests
 * code quality via `flake8`_
+* unit tests
 * documentation building
 * code coverage
 
@@ -125,24 +128,19 @@ The ``honeybadgermpc`` code follows the `PEP8`_ style guide. The maximum line
 length is set at 89 characters. This setting can be found in the
 :file:`.flake8` file.
 
-Test driven work
-----------------
-Tests are heavily encouraged as they not only help the one developing the code
-but also others to verify the work. Consequently, a pull request should be
-accompanied by some tests. Code coverage is checked on travis and codecov and
-teh pull request may be automatically marked as failing if the code coverage
-drops too much. The coverage requirements are defined in the
-:file:`.codecov.yaml` file.
+Tests
+-----
+A pull request should ideally be accompanied by some tests. Code coverage is
+checked on travis via codecov. The coverage requirements are defined in the
+:file:`.codecov.yaml` file. See codecov's documentation on
+`coverage configuration`_ for more information about the codecov.yaml file.
 
-.. todo:: link to relavant codecov docs (for setting coverage drops tolerance)
+`pytest`_ is the framework used to write tests and it is probably a good idea
+to consult its documentation once in a while to learn new tricks as it may
+help a lot when writing tests. For instance, learning to work with
+`pytest fixtures`_ can help greatly to simplify tests, and re-use test
+components throughout the test code.
 
-In addition to providing tests with one's work one is also encouraged to try
-to develop the code and tests more or less concurrently. That is, one does not
-need to wait at "the end" to start writing tests. Both the code and tests can
-be developed in multiple iteration in such a way that one makes progress on
-both fronts as time advances.
-
-.. todo:: refine/review this section
 
 Documentation
 -------------
@@ -173,3 +171,7 @@ instead of importing at the top?
 .. _Codecov: https://codecov.io/
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 .. _flake8: http://flake8.pycqa.org/en/latest/index.html
+.. _issue #23 (Implement jubjub elliptic curve MPC programs): https://github.com/initc3/HoneyBadgerMPC/issues/23
+.. _Coverage Configuration: https://docs.codecov.io/docs/coverage-configuration
+.. _pytest: https://docs.pytest.org/
+.. _pytest fixtures: https://docs.pytest.org/en/latest/fixture.html#fixture
