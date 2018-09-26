@@ -14,6 +14,8 @@ Using `docker-compose`:
 
     $ docker-compose run --rm honeybadgermpc make clean
 
+Debugging ``asyncio``
+---------------------
 
 :py:data:`sys.path`/:py:envvar:`PYTHONPATH` issues
 --------------------------------------------------

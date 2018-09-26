@@ -32,11 +32,11 @@ Each of these checks corresponds to a row in the `build matrix`_:
 
 .. code-block:: yaml
 
-	matrix:
-	  include:
-	    - env: BUILD=tests
-	    - env: BUILD=flake8
-	    - env: BUILD=docs
+    matrix:
+      include:
+        - env: BUILD=tests
+        - env: BUILD=flake8
+        - env: BUILD=docs
 
 Depending on the value of the ``BUILD`` variable the various steps (e.g.:
 `install`_, `script`_) of the `build lifecycle`_ may differ.
@@ -48,11 +48,11 @@ In order to use Python 3.7 the following workaround is used in
 
 .. code-block:: yaml
 	
-	os: linux
-	dist: xenial
-	language: python
-	python: 3.7
-	sudo: true
+    os: linux
+    dist: xenial
+    language: python
+    python: 3.7
+    sudo: true
 
 See currently opened issue on this matter:
 https://github.com/travis-ci/travis-ci/issues/9815
@@ -65,10 +65,10 @@ In order to use Docker the following settings are needed in
 
 .. code-block:: yaml
 	
-	sudo: true
-	
-	services:
-	  - docker
+    sudo: true
+
+    services:
+      - docker
 
 See :ref:`docker-in-travis` below for more information on how we use
 ``docker`` and ``docker-compose`` on Travis CI to run the tests for
@@ -135,5 +135,4 @@ Recommended readings
 .. _using docker in builds: :https://docs.travis-ci.com/user/docker/
 .. _flake8: http://flake8.pycqa.org/en/latest/index.html
 .. _codecov: https://codecov.io/gh/initc3/HoneyBadgerMPC
-.. _coverage.py: https://coverage.readthedocs.io/en/coverage-4.5.1a/
-
+.. _coverage.py: https://coverage.readthedocs.io/

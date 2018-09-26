@@ -1,7 +1,7 @@
 Contributing new code
 =====================
 Since `git`_  and `github`_ are used to version and host the code, one needs
-to learn to work with both tools. 
+to learn to work with both tools.
 
 
 Suggested Git/Github workflow
@@ -19,7 +19,7 @@ convention, ``upstream`` should point to the "shared" repository, whereas
 ``origin`` should point to your fork. Use ``git remote -v`` to perform the
 check:
 
-.. code-block:: bash
+.. code-block:: shell-session
 
     $ git remote -v
     origin  git@github.com:<github_username>/HoneyBadgerMPC.git (fetch)
@@ -39,16 +39,16 @@ need to work on. As an example, if you need to contribute work to the
 
 .. code-block:: bash
 
-	$ git fetch upstream
-	$ git checkout -b jubjub upstream/jubjub
+    $ git fetch upstream
+    $ git checkout -b jubjub upstream/jubjub
 
 In order to keep your local copy up-to-date you should periodically sync it
 with the remote. First switch to the local branch:
 
 .. code-block:: bash
 
-	$ git fetch upstream
-	$ git rebase upstream/jubjub jubjub
+    $ git fetch upstream
+    $ git rebase upstream/jubjub jubjub
 
 There are multiple ways to work with remote branches. See
 https://git-scm.com/book/en/v2/Git-Branching-Remote-Branches for more
@@ -65,8 +65,8 @@ contribute. As an example, say you are working on `issue #23 (Implement jubjub
 elliptic curve MPC programs)`_, then you could create a new branch like so:
 
 .. code-block:: bash
-      
-	$ git checkout -b issue-23-jujub-ec-mpc jubjub
+
+    $ git checkout -b issue-23-jujub-ec-mpc jubjub
 
 You can name the branch whatever you like, but you may find it useful to
 choose a meaningful name along with the issue number you are working on.
@@ -78,7 +78,7 @@ to your remote on Github, as this will serve as a backup:
 
 .. code-block:: bash
 
-	$ git push origin issue-23-jujub-ec-mpc
+    $ git push origin issue-23-jujub-ec-mpc
 
 
 In addtion to backing up your work on Github you should stay in sync with
@@ -86,27 +86,27 @@ the shared remote branch. To do so, periodically ``fetch`` and ``rebase``:
 
 .. code-block:: bash
 
-	$ git fetch upstream
-	$ git rebase upstream/jubjub issue-23-jujub-ec-mpc
+    $ git fetch upstream
+    $ git rebase upstream/jubjub issue-23-jujub-ec-mpc
 
 Git commit best practices
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 .. todo:: document some common best practices to write commit messages and
-	also to organize one's work into relatively clean commits
+    also to organize one's work into relatively clean commits
 
 Signing commits
 ^^^^^^^^^^^^^^^
 .. todo:: document the option of signing commits
- 	* https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
-	* https://help.github.com/articles/signing-commits/
+    * https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
+    * https://help.github.com/articles/signing-commits/
 
-Make a pull request
-^^^^^^^^^^^^^^^^^^^
+Making a pull request
+^^^^^^^^^^^^^^^^^^^^^
 Once you are done with your work, you have to push it to your remote:
 
 .. code-block:: bash
 
-	$ git push origin issue-23-jujub-ec-mpc
+    $ git push origin issue-23-jujub-ec-mpc
 
 and then you can `make a pull request`_ to merge your work with the shared
 remote branch that you have based your work on.
@@ -153,10 +153,11 @@ Git & Github references
 
 FAQ
 ---
-**Q.** Why some test functions import modules-under-test or related ones locally
-instead of importing at the top?
+**Q.** Why some test functions import modules-under-test or related ones
+locally instead of importing at the top?
 
 **A.** See https://pylonsproject.org/community-unit-testing-guidelines.html
+
 
 .. _git: https://git-scm.com/
 .. _github: https://help.github.com/
