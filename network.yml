@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  hbmpc_0:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/HoneyBadgerMPC
+    ports:
+      - 7000
+    command: python -m honeybadgermpc.ipc 4 1 hbmpc_0
+    #command: nc -l -p 7000
+  hbmpc_1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/HoneyBadgerMPC
+    ports:
+      - 7000
+    command: python -m honeybadgermpc.ipc 4 1 hbmpc_1
+    #command: nc -l -p 7000
+  hbmpc_2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/HoneyBadgerMPC
+    ports:
+      - 7000
+    command: python -m honeybadgermpc.ipc 4 1 hbmpc_2
+    #command: nc -l -p 7000
+  hbmpc_3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/HoneyBadgerMPC
+    ports:
+      - 7000
+    command: python -m honeybadgermpc.ipc 4 1 hbmpc_3
+    #command: nc -l -p 7000
