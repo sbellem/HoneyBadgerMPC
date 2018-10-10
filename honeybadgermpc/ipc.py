@@ -1,7 +1,10 @@
+import configparser
 import pickle
 import asyncio
 import sys
 import struct
+import socket
+
 from .passive import PassiveMpc
 
 
@@ -12,6 +15,27 @@ class Senders(object):
 
     async def connect(self):
         # Setup all connections first before sending messages
+
+        # XXX BEGIN temporary hack
+        # ``socket.getaddrinfo``, called in open_connection may fail thus causing an
+        # unhandled exception.
+        # A connection management mechanism is needed to that failed connections are
+        # re-tried etc.
+        # Basically nodes should be capable to join when they try to connect but if late
+        # it should not crash the whole thing, or more precisely prevent other nodes
+        # from participating in the protocol.
+        while True:
+            try:
+                addrinfo_list = [
+                    socket.getaddrinfo(self.config[i].ip, self.config[i].port)
+                    for i in range(len(self.queues))
+                ]
+            except socket.gaierror:
+                continue
+            else:
+                break
+        # XXX END temporary hack
+
         streams = [asyncio.open_connection(
                 self.config[i].ip,
                 self.config[i].port
@@ -153,10 +177,14 @@ if __name__ == "__main__":
     from .passive import generate_test_zeros, generate_test_triples
     from .passive import test_prog1, test_prog2
 
+    configfile = 'hbmpc.ini'
+    config = configparser.ConfigParser()
+    config.read(configfile)
     # N - total number of parties
     # t - total number of corrupt parties
     # port - port to be used for communication between parties
     # host_id - Of the form <prefix>_<party_id>
+    docker = config.getboolean('general', 'docker')
     N, t, port = int(sys.argv[1]), int(sys.argv[2]), 7000
     host = sys.argv[3].split("_")
     prefix, id = host[0] + "_", int(host[1])
@@ -171,7 +199,11 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
     try:
-        config = {i: NodeDetails(prefix+str(i), port+i) for i in range(N)}
+        # XXX hack
+        if docker:
+            config = {i: NodeDetails(prefix+str(i), port) for i in range(N)}
+        else:
+            config = {i: NodeDetails(prefix+str(i), port+i) for i in range(N)}
         loop.run_until_complete(runProgramAsProcesses(test_prog1, config, t, id))
         loop.run_until_complete(runProgramAsProcesses(test_prog2, config, t, id))
     finally:
