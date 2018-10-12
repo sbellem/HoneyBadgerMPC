@@ -13,7 +13,10 @@ DESCRIPTION = "honeybadgermpc"
 REQUIRES_PYTHON = ">=3.7.0"
 VERSION = None
 
-REQUIRED = ["gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
+if os.environ.get("READTHEDOCS") == "True":
+    REQUIRED = []
+else:
+    REQUIRED = ["gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
 
 TESTS_REQUIRES = [
     "black",
