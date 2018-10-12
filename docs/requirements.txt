@@ -1,0 +1,7 @@
+Sphinx
+sphinx-autobuild
+sphinx_rtd_theme
+sphinx_tabs
+m2r
+ethereum
+web3
