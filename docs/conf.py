@@ -1,24 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-import os
-
 import sphinx_rtd_theme
 
 
 # Needed for readthedocs because it does not have the C development library
 # for gmpy.
-# See https://docs.readthedocs.io/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules
-#if os.environ.get('READTHEDOCS') == 'True':
-#    import sys
-#    from unittest.mock import MagicMock
-#
-#    class Mock(MagicMock):
-#        @classmethod
-#        def __getattr__(cls, name):
-#            return MagicMock()
-#
-#    MOCK_MODULES = ['gmpy']
-#    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 autodoc_mock_imports = ['gmpy2']
 
 # Configuration file for the Sphinx documentation builder.
