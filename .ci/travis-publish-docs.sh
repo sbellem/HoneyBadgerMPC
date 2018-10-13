@@ -10,19 +10,14 @@ SOURCE_BRANCH="test-publish-docs-to-github-pages"
 TARGET_BRANCH="gh-pages"
 DOC_BUILD_DIR="_build/html"
 
-#if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
 if [ "${TRAVIS_PULL_REQUEST}" != "false" -o "${TRAVIS_BRANCH}" != "${SOURCE_BRANCH}" ]; then
     echo "Skipping documentation deploy."
     exit 0
 fi
 
-#pip install -U .[dev]
-#make htmldocs
-
-#git config --global user.email "infra@magic.io"
+git config --global user.email "sbellem@gmail.com"
 git config --global user.name "Travis CI"
 
-#PACKAGE_VERSION=$(python ".ci/package-version.py")
 REPO=$(git config remote.origin.url)
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 COMMITISH=$(git rev-parse --verify HEAD)
@@ -35,7 +30,6 @@ cd ..
 
 VERSION="latest"
 
-#if [ -d "gh-pages/${VERSION}/" ]; then
 rm -r "gh-pages/${VERSION}/"
 rsync -a "${DOC_BUILD_DIR}/" "gh-pages/${VERSION}/"
 
@@ -53,7 +47,7 @@ git add --all .
 git commit -m "Automatic documentation update" --author="${AUTHOR}"
 
 set +x
-echo "Decrypting push key..."
+echo "Decrypting deploy key..."
 ENCRYPTED_KEY_VAR="encrypted_${DOCS_DEPLOY_KEY_LABEL}_key"
 ENCRYPTED_IV_VAR="encrypted_${DOCS_DEPLOY_KEY_LABEL}_iv"
 ENCRYPTED_KEY=${!ENCRYPTED_KEY_VAR}
