@@ -37,7 +37,7 @@ async def phase1(context, k, powers_prefix, cpp_prefix):
 async def phase2(nodeid, batchid, runid, cpp_prefix):
     filename = f"{cpp_prefix}-{nodeid}.input"
     sumFileName = f"{sharedatadir}/power-{runid}_{nodeid}.sums"
-    runcmd = f"{shufflebasedir}/cpp/compute-power-sums {filename} {sumFileName}"
+    runcmd = f"compute-power-sums {filename} {sumFileName}"
     await runCommandSync(runcmd)
 
 
