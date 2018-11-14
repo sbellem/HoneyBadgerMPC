@@ -24,3 +24,4 @@ services:
       - ./pairing/benches:/usr/src/HoneyBadgerMPC/pairing/benches
       - ./pairing/Cargo.toml:/usr/src/HoneyBadgerMPC/pairing/Cargo.toml
       - ./pairing/setup.py:/usr/src/HoneyBadgerMPC/pairing/setup.py
+      - ./prof:/usr/src/HoneyBadgerMPC/prof

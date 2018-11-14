@@ -10,6 +10,7 @@ if [ "${BUILD}" == "tests" ]; then
         --cov-report=term-missing \
         --cov-report=xml \
         --profile
+    $BASE_CMD python tests/print_profiler_data.py
 elif [ "${BUILD}" == "flake8" ]; then
     flake8
 elif [ "${BUILD}" == "docs" ]; then
