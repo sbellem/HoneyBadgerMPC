@@ -16,7 +16,6 @@
     intro
     subprotocols
     performance
-    roadmap
 
 .. .. toctree::
 ..     :maxdepth: 1
@@ -38,15 +37,7 @@
     :maxdepth: 2
     :caption: Library Reference
 
-    libref/honeybadgermpc
-..    libref/passive
-..    libref/commonsubset
-..    libref/triple_refinement
-..    libref/rand
-..    libref/secretshare
-..    libref/field
-..    libref/polynomial
-..    libref/router
+    internals
 
 .. development/index
 .. toctree::
