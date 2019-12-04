@@ -4,6 +4,7 @@ Volume Matching Auction : buy and sell orders are matched only on volume while p
 """
 import asyncio
 import logging
+import copy
 from honeybadgermpc.preprocessing import (
     PreProcessedElements as FakePreProcessedElements,
 )
@@ -24,8 +25,15 @@ config = {
 async def compute_bids(ctx, balances, bids, price):
     one = ctx.Share(1)
     zero = ctx.Share(0)
-    fp_one = FixedPoint(ctx, one * 2 ** 32)
     fp_zero = FixedPoint(ctx, zero)
+
+    used_balances = {}
+    for key in balances.keys():
+        used_balances[key] = {
+            "eth": create_clear_share(ctx, 0),
+            "erc20": create_clear_share(ctx, 0),
+        }
+
     buys = []
     sells = []
 
@@ -35,27 +43,35 @@ async def compute_bids(ctx, balances, bids, price):
         is_sell = await vol.ltz()
         is_buy = one - is_sell
 
-        sell_vol = FixedPoint(ctx, await (is_sell * vol.share))
+        sell_vol = fp_zero.sub(FixedPoint(ctx, await (is_sell * vol.share)))
         buy_vol = FixedPoint(ctx, await (is_buy * vol.share))
 
-        is_sell_vol_valid = one - await balances[addr]["erc20"].lt(sell_vol)
+        is_sell_vol_valid = one - await balances[addr]["erc20"].lt(
+            sell_vol.add(used_balances[addr]["erc20"])
+        )
         is_buy_vol_valid = one - await balances[addr]["eth"].lt(
-            await buy_vol.mul(price)
+            (await buy_vol.mul(price)).add(used_balances[addr]["eth"])
         )
 
         fp_is_sell_vol_valid = FixedPoint(ctx, is_sell_vol_valid * 2 ** 32)
         fp_is_buy_vol_valid = FixedPoint(ctx, is_buy_vol_valid * 2 ** 32)
 
-        sells.append((addr, fp_zero.sub(await fp_is_sell_vol_valid.mul(sell_vol))))
-        buys.append((addr, await fp_is_buy_vol_valid.mul(buy_vol)))
+        sell_vol = await fp_is_sell_vol_valid.mul(sell_vol)
+        buy_vol = await fp_is_buy_vol_valid.mul(buy_vol)
+
+        sells.append((addr, sell_vol))
+        buys.append((addr, buy_vol))
+
+        used_balances[addr]["erc20"] = used_balances[addr]["erc20"].add(sell_vol)
+        used_balances[addr]["eth"] = used_balances[addr]["eth"].add(
+            await buy_vol.mul(price)
+        )
 
     return buys, sells
 
 
 async def volume_matching(ctx, bids):
-    one = ctx.Share(1)
     zero = ctx.Share(0)
-    fp_one = FixedPoint(ctx, one * 2 ** 32)
     fp_zero = FixedPoint(ctx, zero)
 
     (buys, sells) = bids
@@ -83,7 +99,7 @@ async def volume_matching(ctx, bids):
         z2 = await L.lt(sell_vol)
         fp_z2 = FixedPoint(ctx, z2 * 2 ** 32)
 
-        matched_vol = (await L.sub(sell_vol).mul(fp_z2)).add(await sell_vol.mul(fp_z1))
+        matched_vol = await (await L.sub(sell_vol).mul(fp_z2)).add(sell_vol).mul(fp_z1)
         L = L.sub(matched_vol)
 
         matched_sells.append([addr, matched_vol])
@@ -98,7 +114,7 @@ async def volume_matching(ctx, bids):
         z2 = await L.lt(buy_vol)
         fp_z2 = FixedPoint(ctx, z2 * 2 ** 32)
 
-        matched_vol = (await (L.sub(buy_vol)).mul(fp_z2)).add(await buy_vol.mul(fp_z1))
+        matched_vol = await (await (L.sub(buy_vol)).mul(fp_z2)).add(buy_vol).mul(fp_z1)
         L = L.sub(matched_vol)
 
         matched_buys.append([addr, matched_vol])
@@ -107,7 +123,7 @@ async def volume_matching(ctx, bids):
     return matched_buys, matched_sells, res_buys, res_sells
 
 
-async def compute_new_balances(ctx, balances, matched_buys, matched_sells, price):
+async def compute_new_balances(balances, matched_buys, matched_sells, price):
     for i, sell in enumerate(matched_sells):
         addr, vol = sell
 
@@ -131,75 +147,97 @@ def create_clear_share(ctx, x):
     return FixedPoint(ctx, ctx.Share(x * 2 ** 32))
 
 
-async def dot_product(ctx, xs, ys):
-    return sum((x * y for x, y in zip(xs, ys)), ctx.Share(0))
-
-
 async def prog(ctx):
     ctx.preproc = FakePreProcessedElements()
-    bids = []
-    bids.append(["0x125", create_secret_share(ctx, 5)])
-    bids.append(["0x127", create_secret_share(ctx, 7)])
-    bids.append(["0x128", create_secret_share(ctx, -3)])
-    bids.append(["0x129", create_secret_share(ctx, -11)])
+
+    price = create_clear_share(ctx, 3)
+    # price = create_clear_share(ctx, 2)
 
     balances = {}
-    balances["0x125"] = {
-        "eth": create_clear_share(ctx, 15),
-        "erc20": create_clear_share(ctx, 1),
-    }
-    balances["0x127"] = {
-        "eth": create_clear_share(ctx, 18),
-        "erc20": create_clear_share(ctx, 0),
-    }
-    balances["0x128"] = {
-        "eth": create_clear_share(ctx, 2),
-        "erc20": create_clear_share(ctx, 3),
-    }
-    balances["0x129"] = {
-        "eth": create_clear_share(ctx, 0),
+    # balances["0x125"] = {
+    #     "eth": create_clear_share(ctx, 15),
+    #     "erc20": create_clear_share(ctx, 1),
+    # }
+    # balances["0x127"] = {
+    #     "eth": create_clear_share(ctx, 18),
+    #     "erc20": create_clear_share(ctx, 0),
+    # }
+    # balances["0x128"] = {
+    #     "eth": create_clear_share(ctx, 2),
+    #     "erc20": create_clear_share(ctx, 3),
+    # }
+    # balances["0x129"] = {
+    #     "eth": create_clear_share(ctx, 0),
+    #     "erc20": create_clear_share(ctx, 15),
+    # }
+
+    balances["0x120"] = {
+        "eth": create_clear_share(ctx, 78),
         "erc20": create_clear_share(ctx, 15),
     }
 
-    bal = [(await x["eth"].open(), await x["erc20"].open()) for x in balances.values()]
-    print(f"balances initial {bal}")
+    balances["0x121"] = {
+        "eth": create_clear_share(ctx, 42),
+        "erc20": create_clear_share(ctx, 11),
+    }
 
-    price = create_clear_share(ctx, 3)
+    _balances = [
+        (await x["eth"].open(), await x["erc20"].open()) for x in balances.values()
+    ]
+    logging.info(f"balances initial {_balances}")
+
+    bids = []
+    # bids.append(["0x125", create_secret_share(ctx, 5)])
+    # bids.append(["0x127", create_secret_share(ctx, 7)])
+    # bids.append(["0x128", create_secret_share(ctx, -3)])
+    # bids.append(["0x129", create_secret_share(ctx, -11)])
+    bids.append(["0x121", create_secret_share(ctx, 1)])
+    bids.append(["0x120", create_secret_share(ctx, -5)])
+    bids.append(["0x121", create_secret_share(ctx, -9)])
+
     buys, sells = await compute_bids(ctx, balances, bids, price)
 
     _buys = [await x[1].open() for x in buys]
     _sells = [await x[1].open() for x in sells]
-    print(f"buys initial: {_buys} and sells initial: {_sells}")
+    logging.info(f"buys initial: {_buys} and sells initial: {_sells}")
 
-    logging.info(f"[{ctx.myid}] Running prog 1.")
     matched_buys, matched_sells, res_buys, res_sells = await volume_matching(
         ctx, (buys, sells)
     )
 
-    _buys = [await x[1].open() for x in matched_buys]
-    _sells = [await x[1].open() for x in matched_sells]
-    print(f"buys matched: {_buys} and sells matched: {_sells}")
+    _matched_buys = [await x[1].open() for x in matched_buys]
+    _matched_sells = [await x[1].open() for x in matched_sells]
+    logging.info(f"buys matched: {_matched_buys} and sells matched: {_sells}")
 
-    _buys = [await x[1].open() for x in res_buys]
-    _sells = [await x[1].open() for x in res_sells]
-    print(f"buys rest: {_buys} and sells rest: {_sells}")
+    _res_buys = [await x[1].open() for x in res_buys]
+    _res_sells = [await x[1].open() for x in res_sells]
+    logging.info(f"buys rest: {_res_buys} and sells rest: {_res_sells}")
 
-    balances = await compute_new_balances(
-        ctx, balances, matched_buys, matched_sells, price
+    _balances = [
+        (await x["eth"].open(), await x["erc20"].open()) for x in balances.values()
+    ]
+    logging.info(f"balances rest {_balances}")
+
+    final_balances = await compute_new_balances(
+        balances, matched_buys, matched_sells, price
     )
 
-    bal = [(await x["eth"].open(), await x["erc20"].open()) for x in balances.values()]
-    print(f"balances rest {bal}")
+    _final_balances = [
+        (await x["eth"].open(), await x["erc20"].open())
+        for x in final_balances.values()
+    ]
+    logging.info(f"balances rest {_final_balances}")
 
     logging.info(f"[{ctx.myid}] done")
 
 
 async def dark_pewl():
     n, t = 4, 1
+    k = 10000
     pp = FakePreProcessedElements()
-    pp.generate_zeros(10000, n, t)
-    pp.generate_triples(10000, n, t)
-    pp.generate_bits(10000, n, t)
+    pp.generate_zeros(k, n, t)
+    pp.generate_triples(k, n, t)
+    pp.generate_bits(k, n, t)
     program_runner = TaskProgramRunner(n, t, config)
     program_runner.add(prog)
     results = await program_runner.join()
