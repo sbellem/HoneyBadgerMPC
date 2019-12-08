@@ -5,7 +5,6 @@ Volume Matching Auction : buy and sell orders are matched only on volume while p
 """
 import asyncio
 import logging
-import copy
 from honeybadgermpc.preprocessing import (
     PreProcessedElements as FakePreProcessedElements,
 )
@@ -44,28 +43,28 @@ async def compute_bids(ctx, balances, bids, price):
         is_sell = await vol.ltz()
         is_buy = one - is_sell
 
-        sell_vol = fp_zero.sub(FixedPoint(ctx, await (is_sell * vol.share)))
+        sell_vol = fp_zero - FixedPoint(ctx, await (is_sell * vol.share))
         buy_vol = FixedPoint(ctx, await (is_buy * vol.share))
 
         is_sell_vol_valid = one - await balances[addr]["erc20"].lt(
-            sell_vol.add(used_balances[addr]["erc20"])
+            sell_vol + used_balances[addr]["erc20"]
         )
         is_buy_vol_valid = one - await balances[addr]["eth"].lt(
-            (await buy_vol.mul(price)).add(used_balances[addr]["eth"])
+            (await buy_vol.__mul__(price)) + used_balances[addr]["eth"]
         )
 
         fp_is_sell_vol_valid = FixedPoint(ctx, is_sell_vol_valid * 2 ** 32)
         fp_is_buy_vol_valid = FixedPoint(ctx, is_buy_vol_valid * 2 ** 32)
 
-        sell_vol = await fp_is_sell_vol_valid.mul(sell_vol)
-        buy_vol = await fp_is_buy_vol_valid.mul(buy_vol)
+        sell_vol = await fp_is_sell_vol_valid.__mul__(sell_vol)
+        buy_vol = await fp_is_buy_vol_valid.__mul__(buy_vol)
 
         sells.append((addr, sell_vol))
         buys.append((addr, buy_vol))
 
-        used_balances[addr]["erc20"] = used_balances[addr]["erc20"].add(sell_vol)
-        used_balances[addr]["eth"] = used_balances[addr]["eth"].add(
-            await buy_vol.mul(price)
+        used_balances[addr]["erc20"] = used_balances[addr]["erc20"] + sell_vol
+        used_balances[addr]["eth"] = used_balances[addr]["eth"] + (
+            await buy_vol.__mul__(price)
         )
 
     return buys, sells
@@ -81,45 +80,49 @@ async def volume_matching(ctx, bids):
 
     total_sells = fp_zero
     for sell in sells:
-        total_sells = total_sells.add(sell[1])
+        total_sells = total_sells + sell[1]
 
     total_buys = fp_zero
     for buy in buys:
-        total_buys = total_buys.add(buy[1])
+        total_buys = total_buys + buy[1]
 
     f = await total_buys.lt(total_sells)
     fp_f = FixedPoint(ctx, f * 2 ** 32)
-    T = (await total_buys.sub(total_sells).mul(fp_f)).add(total_sells)
+    matching_volume = (await (total_buys - total_sells).__mul__(fp_f)) + total_sells
 
-    L = T
+    rest_volume = matching_volume
     for i, sell in enumerate(sells):
         addr, sell_vol = sell
 
-        z1 = await fp_zero.lt(L)
+        z1 = await fp_zero.lt(rest_volume)
         fp_z1 = FixedPoint(ctx, z1 * 2 ** 32)
-        z2 = await L.lt(sell_vol)
+        z2 = await rest_volume.lt(sell_vol)
         fp_z2 = FixedPoint(ctx, z2 * 2 ** 32)
 
-        matched_vol = await (await L.sub(sell_vol).mul(fp_z2)).add(sell_vol).mul(fp_z1)
-        L = L.sub(matched_vol)
+        matched_vol = await (
+            (await (rest_volume - sell_vol).__mul__(fp_z2)) + sell_vol
+        ).__mul__(fp_z1)
+        rest_volume = rest_volume - matched_vol
 
         matched_sells.append([addr, matched_vol])
-        res_sells.append([addr, sell_vol.sub(matched_vol)])
+        res_sells.append([addr, sell_vol - matched_vol])
 
-    L = T
+    rest_volume = matching_volume
     for i, buy in enumerate(buys):
         addr, buy_vol = buy
 
-        z1 = await fp_zero.lt(L)
+        z1 = await fp_zero.lt(rest_volume)
         fp_z1 = FixedPoint(ctx, z1 * 2 ** 32)
-        z2 = await L.lt(buy_vol)
+        z2 = await rest_volume.lt(buy_vol)
         fp_z2 = FixedPoint(ctx, z2 * 2 ** 32)
 
-        matched_vol = await (await (L.sub(buy_vol)).mul(fp_z2)).add(buy_vol).mul(fp_z1)
-        L = L.sub(matched_vol)
+        matched_vol = await (
+            (await (rest_volume - buy_vol).__mul__(fp_z2)) + buy_vol
+        ).__mul__(fp_z1)
+        rest_volume = rest_volume - matched_vol
 
         matched_buys.append([addr, matched_vol])
-        res_buys.append([addr, buy_vol.sub(matched_vol)])
+        res_buys.append([addr, buy_vol - matched_vol])
 
     return matched_buys, matched_sells, res_buys, res_sells
 
@@ -128,14 +131,14 @@ async def compute_new_balances(balances, matched_buys, matched_sells, price):
     for i, sell in enumerate(matched_sells):
         addr, vol = sell
 
-        balances[addr]["erc20"] = balances[addr]["erc20"].sub(vol)
-        balances[addr]["eth"] = balances[addr]["eth"].add(await vol.mul(price))
+        balances[addr]["erc20"] = balances[addr]["erc20"] - vol
+        balances[addr]["eth"] = balances[addr]["eth"] + (await vol.__mul__(price))
 
     for i, buy in enumerate(matched_buys):
         addr, vol = buy
 
-        balances[addr]["eth"] = balances[addr]["eth"].sub(await vol.mul(price))
-        balances[addr]["erc20"] = balances[addr]["erc20"].add(vol)
+        balances[addr]["eth"] = balances[addr]["eth"] - (await vol.__mul__(price))
+        balances[addr]["erc20"] = balances[addr]["erc20"] + vol
 
     return balances
 
@@ -152,34 +155,23 @@ async def prog(ctx):
     ctx.preproc = FakePreProcessedElements()
 
     price = create_clear_share(ctx, 3)
-    # price = create_clear_share(ctx, 2)
 
     balances = {}
-    # balances["0x125"] = {
-    #     "eth": create_clear_share(ctx, 15),
-    #     "erc20": create_clear_share(ctx, 1),
-    # }
-    # balances["0x127"] = {
-    #     "eth": create_clear_share(ctx, 18),
-    #     "erc20": create_clear_share(ctx, 0),
-    # }
-    # balances["0x128"] = {
-    #     "eth": create_clear_share(ctx, 2),
-    #     "erc20": create_clear_share(ctx, 3),
-    # }
-    # balances["0x129"] = {
-    #     "eth": create_clear_share(ctx, 0),
-    #     "erc20": create_clear_share(ctx, 15),
-    # }
-
-    balances["0x120"] = {
-        "eth": create_clear_share(ctx, 78),
-        "erc20": create_clear_share(ctx, 15),
+    balances["0x125"] = {
+        "eth": create_clear_share(ctx, 15),
+        "erc20": create_clear_share(ctx, 1),
     }
-
-    balances["0x121"] = {
-        "eth": create_clear_share(ctx, 42),
-        "erc20": create_clear_share(ctx, 11),
+    balances["0x127"] = {
+        "eth": create_clear_share(ctx, 18),
+        "erc20": create_clear_share(ctx, 0),
+    }
+    balances["0x128"] = {
+        "eth": create_clear_share(ctx, 2),
+        "erc20": create_clear_share(ctx, 3),
+    }
+    balances["0x129"] = {
+        "eth": create_clear_share(ctx, 0),
+        "erc20": create_clear_share(ctx, 15),
     }
 
     _balances = [
@@ -188,14 +180,10 @@ async def prog(ctx):
     logging.info(f"balances initial {_balances}")
 
     bids = []
-    # bids.append(["0x125", create_secret_share(ctx, 5)])
-    # bids.append(["0x127", create_secret_share(ctx, 7)])
-    # bids.append(["0x128", create_secret_share(ctx, -3)])
-    # bids.append(["0x129", create_secret_share(ctx, -11)])
-    bids.append(["0x121", create_secret_share(ctx, 1)])
-    bids.append(["0x120", create_secret_share(ctx, -5)])
-    bids.append(["0x121", create_secret_share(ctx, -9)])
-
+    bids.append(["0x125", create_secret_share(ctx, 5)])
+    bids.append(["0x127", create_secret_share(ctx, 7)])
+    bids.append(["0x128", create_secret_share(ctx, -3)])
+    bids.append(["0x129", create_secret_share(ctx, -11)])
     buys, sells = await compute_bids(ctx, balances, bids, price)
 
     _buys = [await x[1].open() for x in buys]
@@ -208,7 +196,7 @@ async def prog(ctx):
 
     _matched_buys = [await x[1].open() for x in matched_buys]
     _matched_sells = [await x[1].open() for x in matched_sells]
-    logging.info(f"buys matched: {_matched_buys} and sells matched: {_sells}")
+    logging.info(f"buys matched: {_matched_buys} and sells matched: {_matched_sells}")
 
     _res_buys = [await x[1].open() for x in res_buys]
     _res_sells = [await x[1].open() for x in res_sells]

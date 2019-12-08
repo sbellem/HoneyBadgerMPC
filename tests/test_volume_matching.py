@@ -93,6 +93,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
 
     num_addrs = random.randint(1, 2)
     logging.info(f"num_addrs: {num_addrs}")
+
     addrs = []
     bal = {}
     for i in range(num_addrs):
@@ -140,7 +141,6 @@ async def test_volume_matching(test_preprocessing, test_runner):
         vol = min(matched, b[i])
         m_buy.append(vol)
         matched -= vol
-
     matched = min(sum_sell, sum_buy)
     m_sell = []
     for i in range(num_bids):
