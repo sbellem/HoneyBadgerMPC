@@ -14,9 +14,9 @@ REQUIRES_PYTHON = ">=3.7.0"
 VERSION = None
 
 if os.environ.get("READTHEDOCS") == "True":
-    REQUIRED = []
+    REQUIRED = ["cython"]
 else:
-    REQUIRED = ["gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
+    REQUIRED = ["cython", "gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
 
 TESTS_REQUIRES = [
     "black",
