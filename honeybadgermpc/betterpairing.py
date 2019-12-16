@@ -1,3 +1,4 @@
+"""Wrapper for the rust-based implementation of BLS12-381."""
 import random
 import re
 import struct
