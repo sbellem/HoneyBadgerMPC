@@ -33,3 +33,32 @@ secretshare
 router
 ======
 .. automodule:: honeybadgermpc.router
+
+
+Mixins
+======
+.. automodule:: honeybadgermpc.progs.mixins
+.. automodule:: honeybadgermpc.progs.mixins.base
+.. automodule:: honeybadgermpc.progs.mixins.constants
+.. automodule:: honeybadgermpc.progs.mixins.dataflow
+.. automodule:: honeybadgermpc.progs.mixins.share_arithmetic
+.. automodule:: honeybadgermpc.progs.mixins.share_comparison
+
+
+
+
+
+MPC Friendly Cryptography
+=========================
+
+BLS12-381
+---------
+.. automodule:: honeybadgermpc.betterpairing
+
+MiMC
+----
+.. automodule:: honeybadgermpc.progs.mimc
+
+JubJub
+------
+.. automodule:: honeybadgermpc.progs.jubjub

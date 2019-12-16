@@ -1,3 +1,4 @@
+"""MPC implementation of the JubJub elliptic curve for public key cryptography."""
 from __future__ import annotations  # noqa: F407
 
 import asyncio

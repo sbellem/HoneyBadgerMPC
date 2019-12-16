@@ -1,3 +1,4 @@
+"""MPC implementation of MiMC symmetric cryptography."""
 from math import ceil, log
 
 from honeybadgermpc.elliptic_curve import Subgroup
@@ -16,10 +17,25 @@ def mimc_plain(x, k):
 
 
 async def mimc_mpc(context, x, k):
-    """
-    MiMC block cipher encryption encrypts message x with secret key k,
-    where either x or k can be secret share, the other is an element of F_p
+    """MiMC block cipher encryption encrypts message :math:`x` with
+    secret key :math:`k`, where either :math:`x` or :math:`k` can be
+    secret share, the other is an element of :math:`F_p`.
+
     See: https://eprint.iacr.org/2016/542.pdf
+
+    Parameters
+    ----------
+    context : honeybadgermpc.mpc.Mpc
+        The MPC context object.
+    x : honeybadgermpc.progs.mixins.dataflow.Share
+        The secret share to encrypt.
+    k : honeybadgermpc.field.GFElement
+        The secret key used to encrypt.
+
+    Returns
+    -------
+    honeybadgermpc.progs.mixins.dataflow.Share
+        The encrypted share.
     """
     # def cubing_share(): [x] -> [x^3]
     async def cubing_share(x):
