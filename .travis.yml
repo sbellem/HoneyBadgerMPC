@@ -19,6 +19,7 @@ stages:
 jobs:
   include:
   - stage: One
+    name: Job 0
     install: skip
     script: echo "Stage One depends on env()"
   - stage: Two
