@@ -20,16 +20,16 @@ jobs:
   include:
   - stage: One
     install: skip
-    script: echo "Stage One-- depends on env()"
+    script: echo "Stage One: depends on env()"
   - stage: Two
     name: Job Zero
     install: skip
-    script: echo "Stage Two -- does NOT depend on env()"
+    script: echo "Stage Two: does NOT depend on env()"
   - if: branch = env(DOCS_DEPLOY_BRANCH)
     name: Job One
     install: skip
-    script: echo "Job that depends on env()"
+    script: echo "Job One: depends on env()"
   - if: branch = env-branch
     name: Job Two
     install: skip
-    script: echo "Job that does NOT depends on env()"
+    script: echo "Job Two: does NOT depend on env()"
