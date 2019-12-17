@@ -57,7 +57,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
             assert _sells[i] == s[i]
 
         matched_buys, matched_sells, res_buys, res_sells = await volume_matching(
-            ctx, (buys, sells)
+            ctx, buys, sells
         )
 
         _matched_buys = [await x[1].open() for x in matched_buys]
