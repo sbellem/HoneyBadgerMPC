@@ -12,9 +12,9 @@ env:
 
 stages:
 - name: One
-  if: branch = "env-branch"
-- name: Two
   if: branch = env(SOMEBRANCH)
+- name: Two
+  if: branch = "env-branch"
 
 jobs:
   include:
