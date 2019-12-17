@@ -25,10 +25,10 @@ jobs:
     name: Job Zero
     install: skip
     script: echo "Stage Two does NOT depend on env()"
-    #  - if: branch = env(DOCS_DEPLOY_BRANCH)
-    #    name: Job One
-    #    install: skip
-    #    script: echo "Job One: depends on env()"
+  - if: branch = env(DOCS_DEPLOY_BRANCH)
+    name: Job One
+    install: skip
+    script: echo "Job One: depends on env()"
     #  - if: branch = env-branch
     #    name: Job Two
     #    install: skip
