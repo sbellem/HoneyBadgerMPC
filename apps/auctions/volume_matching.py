@@ -43,7 +43,8 @@ async def compute_bids(ctx, balances, bids, price):
                   In volume matching, price is determined by reference to some external lit market. Price is how much
                   units of ETH have the same value as one unit of token.
     :return: buys, sells
-             This function returns two lists of bids for buy and sell respectively.
+             This function returns two lists of bids for buy and sell respectively. Since we have separated buy and
+             sell bids, now every bid has volume larger than zero.
     """
 
     one = ctx.Share(1)
