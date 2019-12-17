@@ -14,7 +14,7 @@ stages:
 - name: One
   if: branch = env(ENV_BRANCH)
 - name: Two
-  if: branch = env-branch
+  if: branch = "env-branch"
 
 jobs:
   include:
