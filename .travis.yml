@@ -12,7 +12,7 @@ env:
 
 stages:
 - name: One
-  if: branch = env(DOCS_DEPLOY_BRANCH)
+  if: branch = env(ENV_BRANCH)
 - name: Two
   if: branch = env-branch
 
@@ -25,7 +25,7 @@ jobs:
     name: Job Zero
     install: skip
     script: echo "Stage Two does NOT depend on env()"
-  - if: branch = env(DOCS_DEPLOY_BRANCH)
+  - if: branch = env(ENV_BRANCH)
     name: Job One
     install: skip
     script: echo "Job One depends on env()"
