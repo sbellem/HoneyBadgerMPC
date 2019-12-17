@@ -8,11 +8,11 @@ services:
 
 env:
   global:
-  - ENV_BRANCH: "env-branch"
+  - SOMEBRANCH: "env-branch"
 
 stages:
 - name: One
-  if: branch = env(ENV_BRANCH)
+  if: branch = env(SOMEBRANCH)
 - name: Two
   if: branch = "env-branch"
 
@@ -25,7 +25,7 @@ jobs:
     name: Job Zero
     install: skip
     script: echo "Stage Two does NOT depend on env()"
-  - if: branch = env(ENV_BRANCH)
+  - if: branch = env(SOMEBRANCH)
     name: Job One
     install: skip
     script: echo "Job One depends on env()"
