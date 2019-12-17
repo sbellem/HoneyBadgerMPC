@@ -88,6 +88,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
         for addr in addrs:
             assert final_balances[addr] == _res_balances[addr]
 
+    # random sample price, users addresses, initial balances and bids
     p = random.randint(1, 3)
     logging.info(f"_price: {p}")
 
@@ -109,6 +110,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
         _bids.append([addrs[random.randint(1, num_addrs) - 1], random.randint(-30, 30)])
     logging.info(f"_bids: {_bids}")
 
+    # compute valid buy bids b and sell bids s
     sum_buy = 0
     sum_sell = 0
     b = []
@@ -135,6 +137,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
     logging.info(f"b: {b}")
     logging.info(f"s: {s}")
 
+    # compute matched buy bids m_buy and matched sell bids m_sell
     matched = min(sum_sell, sum_buy)
     m_buy = []
     for i in range(num_bids):
@@ -149,6 +152,7 @@ async def test_volume_matching(test_preprocessing, test_runner):
         matched -= vol
     logging.info(f"matched buy: {m_buy}\nmatched sell: {m_sell}")
 
+    # compute balances after matching final_balances
     sum_eth = 0
     sum_erc = 0
     for addr in addrs:
