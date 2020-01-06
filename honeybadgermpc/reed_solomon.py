@@ -1,3 +1,4 @@
+"""Reed-Solomon encoders and decoders."""
 import logging
 from abc import ABC, abstractmethod
 
@@ -19,11 +20,10 @@ from honeybadgermpc.reed_solomon_wb import make_wb_encoder_decoder
 
 
 class Encoder(ABC):
-    """
-    Generate encoding for given data
-    """
+    """Abstract class to encode data."""
 
     def encode(self, data):
+        """Encode the given data."""
         if type(data[0]) in [list, tuple]:
             return self.encode_batch(data)
         return self.encode_one(data)
@@ -31,26 +31,39 @@ class Encoder(ABC):
     @abstractmethod
     def encode_one(self, data):
         """
-        :type data: list of integers
-        :return: Encoded value
+        Args
+        ----
+        data : list of int
+            The integers to be encoded.
+
+        Returns
+        -------
+        list of int
+            Encoded value.
         """
         raise NotImplementedError
 
     @abstractmethod
     def encode_batch(self, data):
         """
-        :type data: list of list of integers
-        :return: Encoded values
+        Args
+        ----
+        data : list of list of int
+            Batch of list of integers to be encoded.
+
+        Returns
+        -------
+        list of list of int
+            Encoded values.
         """
         raise NotImplementedError
 
 
 class Decoder(ABC):
-    """
-    Recover data from encoded values
-    """
+    """Abstract class to recover data from encoded values."""
 
     def decode(self, z, encoded):
+        """Decode the given encoded data."""
         if type(encoded[0]) in [list, tuple]:
             return self.decode_batch(z, encoded)
         return self.decode_one(z, encoded)
@@ -58,29 +71,58 @@ class Decoder(ABC):
     @abstractmethod
     def decode_one(self, z, encoded):
         """
-        :type z: list of integers
-        :type encoded: list of integers
-        :return: Decoded values or None
+        Args
+        ----
+        z : list of int
+            To document.
+        encoded : list of int
+            To document.
+
+        Returns
+        -------
+        list of int or None
+            Decoded values or None.
         """
         raise NotImplementedError
 
     @abstractmethod
     def decode_batch(self, z, encoded):
         """
-        :type z: list of integers
-        :type encoded: list of lists of integers
-        :return:
+        Args
+        ----
+        z : list of int
+            To document.
+        encoded : list of list of int
+            To document.
+
+        Returns
+        -------
+        list of list of int or None
+            Decoded values or None.
         """
         raise NotImplementedError
 
 
 class RobustDecoder(ABC):
+    """Robust decoder ...
+
+    .. todo:: Write description.
+    """
+
     @abstractmethod
     def robust_decode(self, z, encoded):
         """
-        :type z: list of integers
-        :type encoded: list of integers
-        :return: Decoded values or None, error locations
+        Args
+        ----
+        z : list of int
+            .. todo:: Write description.
+        encoded : list of int
+            .. todo:: Write description.
+
+        Returns
+        -------
+        list or None
+            Decoded values or None, error locations
         """
         raise NotImplementedError
 
@@ -234,15 +276,40 @@ class IncrementalDecoder(object):
     Incremental decoder helps process new data incrementally and aims to make the
     case where no error is present extremely fast.
 
-    1) Validate that the data is indeed correct.
-    2) If at least d + 1 points are available (where d is the degree of the polynomial
-    we wish to reconstruct), then we can use a non-robust decoder
-       (which is usually faster) to decode available data and arrive at our first guess
-    3) As we get more data, validate it against the previous guess, if we find an
-    error now, then our guess is probably wrong. We then use robust decoding to arrive
-    at new guesses.
-    4) We are done after at least (d + 1) + max_errors - confirmed_errors parties
-    agree on every polynomial in the batch
+    1. Validate that the data is indeed correct.
+    2. If at least :math:`d + 1` points are available (where :math:`d` is the
+       ``degree`` of the polynomial we wish to reconstruct), then we can use a
+       non-robust decoder (which is usually faster) to decode available data
+       and arrive at our first guess.
+    3. As we get more data, validate it against the previous guess, if we find
+       an error now, then our guess is probably wrong. We then use robust
+       decoding to arrive at new guesses.
+    4. We are done after at least ``degree + 1 + max_errors - confirmed_errors``
+       (:func:`_min_points_required`) parties agree on every polynomial in the batch.
+
+    Args
+    ----
+    encoder
+        .. todo:: document
+    decoder
+        .. todo:: document
+    robust_decoder
+        .. todo:: document
+    degree
+        .. todo:: document
+    batch_size
+        .. todo:: document
+    max_errors
+        .. todo:: document
+    confirmed_errors
+        Defaults to ``None``.
+
+        .. todo:: document
+    validator
+        Defaults to ``None``.
+
+        .. todo:: document
+
     """
 
     def __init__(

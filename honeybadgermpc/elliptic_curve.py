@@ -6,8 +6,16 @@ class Subgroup:
 
 
 class Jubjub(object):
-    """
-    JubJub is a twisted Edwards curve of the form -x^2 + y^2 = 1 + dx^2y^2
+    """JubJub is a twisted Edwards curve of the form
+    :math:`-x^2 + y^2 = 1 + dx^2y^2`.
+
+    Args
+    ----
+    a : :class:`honeybadgermpc.field.GFElement`, optional
+        Galois field element. Defaults to ``Field(-1)``.
+
+    d : :class:`honeybadgermpc.field.GFElement`, optional
+        Galois field element. Defaults to ``-(Field(10240) / Field(10241)``.
     """
 
     Field = GF(Subgroup.BLS12_381)
@@ -37,16 +45,35 @@ class Jubjub(object):
         return self.disc != 0
 
     def contains_point(self, p: "Point") -> bool:
-        """
-        Checks whether or not the given point sits on the curve
+        """Checks whether or not the given point sits on the curve.
+
+        Args
+        ----
+        p : `class:`Point`
+            A point that is either sitting or not sitting on the curve.
+
+        Returns
+        -------
+        bool
+            True is the point is on the curve, False otherwise.
+
         """
         return self.a * p.x * p.x + p.y * p.y == 1 + self.d * p.x * p.x * p.y * p.y
 
 
 class Point(object):
-    """
-    Represents a point with optimized operations over Edwards curves
-    This is the 'local' version of this class, that doesn't deal with shares
+    """Represents a point with optimized operations over Edwards curves.
+
+    This is the 'local' version of this class, that doesn't deal with shares.
+
+    Args
+    ----
+    x : int
+        x-coordinate of the point.
+    y : int
+        y-coordinate of the point.
+    curve : :class:`Jubjub`
+        Defaults to Jubjub().
     """
 
     def __init__(self, x: int, y: int, curve: Jubjub = Jubjub()):

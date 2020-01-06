@@ -33,7 +33,7 @@ async def _recv_loop(n, recv, s=0):
 
 async def randousha(n, t, k, my_id, _send, _recv, field):
     """
-    Generates a batch of (n-2t)k secret sharings of random elements
+    Generates a batch of :math:`(n-2t)k` secret sharings of random elements
     """
     poly = polynomials_over(field)
     eval_point = EvalPoint(field, n, use_omega_powers=False)

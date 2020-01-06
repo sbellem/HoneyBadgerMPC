@@ -74,7 +74,8 @@ class Mpc(object):
         )
 
     def _get_share_id(self):
-        """Returns a monotonically increasing int value
+        """Returns
+        a monotonically increasing int value
         each time this is called
         """
         share_id = self._share_id

@@ -26,6 +26,14 @@
 
 ..    source: https://docs.python-guide.org/writing/documentation/#project-publication
 
+.. toctree::
+    :maxdepth: 1
+    :caption: Lab
+
+    Enter the Lab!
+
+    lab
+
 
 .. toctree::
     :maxdepth: 1
@@ -38,6 +46,9 @@
     :caption: Library Reference
 
     internals
+    reed-solomon-codes
+
+.. libref/honeybadgermpc
 
 .. development/index
 .. toctree::
