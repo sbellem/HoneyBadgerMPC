@@ -7,13 +7,12 @@ honeybadgermpc
     :maxdepth: 2
     :caption: Modules
 
-    passive
-    commonsubset
+    field
+    polynomial
+    mpc
     triple_refinement
     rand
     secretshare
-    field
-    polynomial
     router
     ipc
     config

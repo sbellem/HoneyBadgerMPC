@@ -108,8 +108,8 @@ def polynomials_over(field):
         @classmethod
         def interpolate_fft(cls, ys, omega):
             """
-            Returns a polynoial f of given degree,
-            such that f(omega^i) == ys[i]
+            Returns a polynoial :math:`f` of given degree,
+            such that :math:`f(omega^i) == ys[i]`
             """
             n = len(ys)
             assert n & (n - 1) == 0, "n must be power of two"
@@ -139,8 +139,8 @@ def polynomials_over(field):
         @classmethod
         def interp_extrap(cls, xs, omega):
             """
-            Interpolates the polynomial based on the even points omega^2i
-            then evaluates at all points omega^i
+            Interpolates the polynomial based on the even points :math:`omega^2i`
+            then evaluates at all points :math:`omega^i`
             """
             n = len(xs)
             assert n & (n - 1) == 0, "n must be power of 2"
@@ -306,20 +306,38 @@ def fnt_decode_step1(poly, zs, omega2, n):
     It depends only on the x values (the points the polynomial is
     evaluated at, i.e. the IDs of the parties contributing shares) so
     it can be reused for multiple batches.
-    Complexity: O(n^2)
 
-    args:
-        zs is a subset of [0,n)
-        omega2 is a (2*n)th root of unity
+    Complexity: :math:`\\mathcal{O}(n^2)`
 
-    returns:
-        A(X) evaluated at 1...omega2**(2n-1)
-        Ai(xi) for each xi = omega**(zi)
+    args
+    ----
+    zs
+        subset of :math:`[0,n)`
+    omega2
+        (2*n)th root of unity
 
-    where:
-        omega = omega2**2
-        where A(X) = prod( X - xj ) for each xj
-        Ai(xi) = prod( xi - xj ) for j != i
+    returns
+    -------
+    as_
+        :math:`A(X)` evaluated at ``1...omega2**(2n-1)``
+    ais_
+        :math:`Ai(xi)` for each ``xi = omega**(zi)``
+
+        where,
+
+        * omega = omega2**2
+        * A(X) = prod( X - xj ) for each xj
+        * Ai(xi) = prod( xi - xj ) for j != i
+
+    Notes
+    -----
+    .. math::
+
+        \\omega = \\omega_2^2
+
+        A(X) = \\mathsf{prod}(X - x_j) \\quad \\mathsf{foreach} \\quad x_j
+
+        Ai(x_i) = \\mathsf{prod}(x_i - x_j) \quad \\mathsf{for} \quad j \\neq i
     """
     k = len(zs)
     omega = omega2 ** 2
@@ -346,15 +364,21 @@ def fnt_decode_step2(poly, zs, ys, as_, ais_, omega2, n):
     """
     Returns a polynomial P such that P(omega**zi) = yi
 
-    Complexity: O(n log n)
+    Complexity: :math:`\\mathcal{O}(n \\log n)`
 
-    args:
-        zs is a subset of [0,n)
-        As, Ais = fnt_decode_step1(zs, omega2, n)
-        omega2 is a (2*n)th root of unity
+    args
+    ----
+    zs
+        subset of [0,n)
+    as_, ais_ :
+        the return result of :func:`fnt_decode_step1` for ``(zs, omega2, n)``
+    omega2
+        (2*n)th root of unity
 
-    returns:
-        P  Poly
+    returns
+    -------
+    P : :class:`Polynomial`
+        An instance of the :class:`Polynomial` class.
     """
     k = len(ys)
     assert len(ys) == len(ais_)

@@ -67,7 +67,11 @@ class HbAvssLight:
     def _handle_implication(self, commitments, ephemeral_public_key, j, j_sk, j_z):
         """
         Handle the implication of AVSS.
-        Return True if the implication is valid, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the implication is valid, False otherwise.
         """
         print("got implication")
         # discard if PKj ! = g^SKj
@@ -230,31 +234,40 @@ class HbAvssLight:
 
     async def avss(self, avss_id, value=None, dealer_id=None, client_mode=False):
         """
-        avss_id: This must be an integer. This must start from 0 per dealer. This is
-        important since it used to ensure an in order delivery of values at each node
-        per dealer i.e. if a node deals two values, then the shares of those values
-        need to be received in the order that they are dealt.
+        args
+        ----
+        avss_id : int
+            This must be an integer. This must start from 0 per dealer. This is
+            important since it used to ensure an in order delivery of values at
+            each node per dealer i.e. if a node deals two values, then the shares
+            of those values need to be received in the order that they are dealt.
 
-        Eg:
-        => If there are 4 nodes and node 0 wants to deal two values:
+            Eg:
+            => If there are 4 nodes and node 0 wants to deal two values:
 
-        node 0: avss(0, value=value1, dealer_id=0)
-        node 1: avss(0, dealer_id=0)
-        node 2: avss(0, dealer_id=0)
-        node 3: avss(0, dealer_id=0)
+            node 0: avss(0, value=value1, dealer_id=0)
+            node 1: avss(0, dealer_id=0)
+            node 2: avss(0, dealer_id=0)
+            node 3: avss(0, dealer_id=0)
 
-        node 0: avss(1, value=value2, dealer_id=0)
-        node 1: avss(1, dealer_id=0)
-        node 2: avss(1, dealer_id=0)
-        node 3: avss(1, dealer_id=0)
+            node 0: avss(1, value=value2, dealer_id=0)
+            node 1: avss(1, dealer_id=0)
+            node 2: avss(1, dealer_id=0)
+            node 3: avss(1, dealer_id=0)
 
-        => Now, if node 1 wants to deal a value next,
-        => the avss_id still must start from 0:
+            => Now, if node 1 wants to deal a value next,
+            => the avss_id still must start from 0:
 
-        node 0: avss(0, value=value3, dealer_id=1)
-        node 1: avss(0, dealer_id=1)
-        node 2: avss(0, dealer_id=1)
-        node 3: avss(0, dealer_id=1)
+            node 0: avss(0, value=value3, dealer_id=1)
+            node 1: avss(0, dealer_id=1)
+            node 2: avss(0, dealer_id=1)
+            node 3: avss(0, dealer_id=1)
+        value
+            to document, the default is None
+        dealer_id
+            to document, the default is None
+        client_mode
+            to document, the default is False
         """
         # If `value` is passed then the node is a 'Sender'
         # `dealer_id` must be equal to `self.my_id`

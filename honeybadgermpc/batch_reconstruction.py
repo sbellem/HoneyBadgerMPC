@@ -26,10 +26,14 @@ async def fetch_one(awaitables):
     """ Given a list of awaitables, run them concurrently and
     return them in the order they complete
 
-    args:
-        awaitables: List of tasks to run concurrently
+    Args
+    ----
+    awaitables
+        List of tasks to run concurrently
 
-    output:
+    Yields
+    ------
+    tuple
         Yields tuples of the form (idx, result) in the order that the tasks finish
     """
     mapping = {elem: idx for (idx, elem) in enumerate(awaitables)}
@@ -66,13 +70,19 @@ def recv_each_party(recv, n):
     creates a set of queues for each party, and forwards
     any recv event to the respective queue for each party
 
-    args:
-        recv: async function that eventually returns a received object
-        n: number of nodes
+    Args
+    ----
+    recv
+        async function that eventually returns a received object
+    n
+        number of nodes
 
-    output:
-        tuple of a background task to forward elements to the correct queue,
-        and a list of recv functions that corresponds to each node.
+    Returns
+    -------
+    task : :class:`asyncio.Task`
+        background task to forward elements to the correct queue
+    recv_funcs : list
+        recv functions that corresponds to each node
     """
     queues = [Queue() for _ in range(n)]
 
@@ -99,22 +109,33 @@ async def batch_reconstruct(
     degree=None,
 ):
     """
-    args:
-      shared_secrets: an array of points representing shared secrets S1 - SB
-      p: field modulus
-      t: faults tolerated
-      n: total number of nodes n >= 3t+1
-      myid: id of the specific node running batch_reconstruction function
-      degree: degree of polynomial to decode (defaults to t)
+    Args
+    ----
+    shared_secrets
+        an array of points representing shared secrets S1 - SB
+    p
+        field modulus
+    t
+        faults tolerated
+    n
+        total number of nodes n >= 3t+1
+    myid
+        id of the specific node running batch_reconstruction function
+    degree
+        degree of polynomial to decode (defaults to :attr:`t`)
 
-    output:
-      the reconstructed array of B shares
+    Returns
+    -------
+    list or None
+        the reconstructed array of B shares
 
+    Notes
+    -----
     Communication takes place over two rounds,
-      objects sent/received of the form('R1', shares) or ('R2', shares)
-      up to one of each for each party
+    objects sent/received of the form('R1', shares) or ('R2', shares)
+    up to one of each for each party
 
-    Reconstruction takes places in chunks of t+1 values
+    Reconstruction takes places in chunks of :math:`t+1` values
     """
     bench_logger = logging.LoggerAdapter(
         logging.getLogger("benchmark_logger"), {"node_id": myid}

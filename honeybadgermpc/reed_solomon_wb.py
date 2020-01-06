@@ -1,43 +1,56 @@
-# an encoder and decoder for Reed-Solomon codes with coefficients in Z/p for a prime p
-# decoder uses the Berlekamp-Welch algorithm
-#
-# Code mostly due to Jeremy Kun
-#   https://jeremykun.com/2015/09/07/welch-berlekamp/
-#
-# Encoding:
-#  k=t+1 is the number of code symbols in the original message.
-#  We encode these as n evaluations of a degree-t polynomial, where the
-#  original t+1 symbols are treated as coefficients of the polynomial.
-#  n is the total number of messages sent out == total number of nodes
-#
-#  Input:
-#   k=3, n=4,  message=[k0, k1, k2]
-#
-#    the degree-t=2 polynomial is  f = k2 x^2 + k1 x + k0
-#
-#  Output: [ m0=f(w^0),
-#            m1=f(w^1),
-#            m2=f(w^2),
-#            m3=f(w^3) ]
-#
-# Decoding:
-#  Given t+1 correct points, we could correctly decode the degree-t poylomial
-#  using ordinary interpolation. Using the B-W algorithm, given t+1+e correct
-#  correct points we can identify and remove up to e errors.
-#
-#  The inputs are passed as list of n points, where at most t+1 points are non-none.
-#  None values are treated as erasures.
-#  Example:
-#  [m0, m1, None, m3]
-#
-#  Since we have at most n message symbols, the most errors we hope to tolerate
-#  is when n=t+1+2e, so e <= maxE = (n-1-t)//2.
-#
-#  We can also correct a mixture of c erasures and e errors, as long as
-#  n=t+1+c+2e.
-#
+r"""An encoder and decoder for Reed-Solomon codes with coefficients in
+Z/p for a prime p decoder uses the Berlekamp-Welch algorithm.
 
-# for solving a linear system
+Code mostly due to Jeremy Kun [1]_.
+
+Notes
+-----
+**Encoding.**
+:math:`k=t+1` is the number of code symbols in the original message.
+We encode these as :math:`n` evaluations of a degree-:math:`t`
+polynomial, where the original :math:`t+1` symbols are treated as
+coefficients of the polynomial.
+
+:math:`n` is the total number of messages sent out == total number of
+nodes
+
+**Input**:
+
+.. math::
+
+    k=3, n=4, \textrm{message}=[k_0, k_1, k_2]
+
+The degree- :math:`t=2` polynomial is
+:math:`f = k_2 x^2 + k_1 x + k_0`.
+
+**Output**:
+
+.. math::
+
+    [m_0=f(w^0), m_1=f(w^1), m_2=f(w^2), m_3=f(w^3)]
+
+**Decoding.**
+Given :math:`t+1` correct points, we could correctly decode the
+degree- :math:`t` poylomial using ordinary interpolation. Using the
+B-W algorithm, given :math:`t+1+e` correct points we can identify and
+remove up to :math:`e` errors.
+
+The inputs are passed as list of :math:`n` points, where at most
+:math:`t+1` points are non-none. None values are treated as erasures.
+
+Example: :math:`[m_0, m_1, \mathsf{None}, m_3]`
+
+Since we have at most :math:`n` message symbols, the most errors we
+hope to tolerate is when :math:`n=t+1+2e`, so
+:math:`e \leq \mathsf{maxE} = \lfloor (n-1-t)/2 \rfloor`.
+
+We can also correct a mixture of :math:`c` erasures and :math:`e`
+errors, as long as :math:`n=t+1+c+2e`.
+
+References
+----------
+.. [1] https://jeremykun.com/2015/09/07/welch-berlekamp/
+"""
 import logging
 
 from honeybadgermpc.field import GF
@@ -46,9 +59,24 @@ from honeybadgermpc.polynomial import EvalPoint, polynomials_over
 
 def make_wb_encoder_decoder(n, k, p, point=None):
     """
-    n: number of symbols to encode
-    k: number of symbols in the message
-        (k=t+1) where t is the degree of the polynomial
+    Args
+    ----
+    n : int
+        number of symbols to encode
+    k : int
+        number of symbols in the message (k=t+1) where t is the degree
+        of the polynomial
+    p
+        .. todo:: to document
+    point
+        .. todo:: to document
+
+    Returns
+    -------
+    encode : inner function
+    decode : inner function
+    solve_system : inner function
+
     """
     if not k <= n <= p:
         raise Exception(
