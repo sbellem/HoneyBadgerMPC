@@ -7,6 +7,7 @@ from aws.AWSConfig import AwsConfig
 import boto3
 
 import paramiko
+from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
 
 class EC2Manager:
@@ -77,6 +78,9 @@ class EC2Manager:
             for region, ids in region_instance_id_map.items():
                 ec2_resource = self.ec2Resources[region]
                 for instance_id in ids:
+                    logging.info(
+                        f"Wait for instance {(region, instance_id)} to be running ..."
+                    )
                     ec2_resource.Instance(id=instance_id).wait_until_running()
 
                 ec2_client = boto3.client(
@@ -85,6 +89,7 @@ class EC2Manager:
                     aws_secret_access_key=AwsConfig.SECRET_ACCESS_KEY,
                     region_name=region,
                 )
+                logging.info(f"Wait for instances ({ids}) of {region} to be OK ...")
                 ec2_client.get_waiter("instance_status_ok").wait(InstanceIds=ids)
 
             with open(EC2Manager.current_vms_file_name, "w") as file_handle:
@@ -102,6 +107,12 @@ class EC2Manager:
         if os.path.isfile(EC2Manager.current_vms_file_name):
             os.remove(EC2Manager.current_vms_file_name)
 
+    def stop_instances_by_id(self):
+        instance_ids = self.get_current_vm_instance_ids()
+        for instance_id in instance_ids:
+            ec2_resource = self.ec2Resources[self.instanceIdRegion[instance_id]]
+            ec2_resource.Instance(id=instance_id).stop()
+
     def get_instance_public_ip(self, instance_id):
         ec2_resource = self.ec2Resources[self.instanceIdRegion[instance_id]]
         return ec2_resource.Instance(id=instance_id).public_ip_address
@@ -116,10 +127,39 @@ class EC2Manager:
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ip = self.get_instance_public_ip(instance_id)
 
+        connected = False
+        retries = 0
+        ssh_error = None
+        while not connected and retries < 10:
+            try:
+                logging.info(f"trying to connect to {(ip, instance_id)} via ssh ...")
+                ssh_client.connect(
+                    hostname=ip, username=AwsConfig.INSTANCE_USER_NAME, pkey=key
+                )
+            except SSHException as err:
+                logging.error(f"Failed connecting to {ip} via ssh due to error: {err}")
+                logging.error(
+                    f"Cannot execute commands {commands} due to `SSHException`. Will retry."
+                )
+                ssh_error = err
+                retries += 1
+            except NoValidConnectionsError as err:
+                logging.error(f"Failed connecting to {ip} via ssh due to error: {err}")
+                logging.error(f"Errors: {err.errors}")
+                logging.error(
+                    f"Cannot execute commands {commands} due to `NoValidConnectionsError`. Will retry."
+                )
+                ssh_error = err
+                retries += 1
+            else:
+                logging.info(f"Connected to {(ip, instance_id)} via ssh.")
+                connected = True
+
+        if not connected:
+            logging.error(f"Could not connect due to error {ssh_error}")
+            return
+
         try:
-            ssh_client.connect(
-                hostname=ip, username=AwsConfig.INSTANCE_USER_NAME, pkey=key
-            )
             for command in commands:
                 _, stdout, stderr = ssh_client.exec_command(command)
                 self.screenLock.acquire()
@@ -148,6 +188,8 @@ class EC2Manager:
                     print(err.decode("utf-8"))
                     print("~" * 30)
                 self.screenLock.release()
-            ssh_client.close()
         except Exception as ex:
+            logging.error(ex)
             print(ex)
+        finally:
+            ssh_client.close()

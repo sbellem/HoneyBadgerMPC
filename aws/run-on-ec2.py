@@ -56,7 +56,8 @@ def run_commands_on_instances(
 
 def get_ipc_setup_commands(s3manager, instance_ids):
     from honeybadgermpc.preprocessing import PreProcessedElements
-    from honeybadgermpc.preprocessing import PreProcessingConstants as Constants
+
+    # from honeybadgermpc.preprocessing import PreProcessingConstants as Constants
 
     n, t = AwsConfig.TOTAL_VM_COUNT, AwsConfig.MPC_CONFIG.T
 
@@ -68,13 +69,15 @@ def get_ipc_setup_commands(s3manager, instance_ids):
 
     triple_urls = s3manager.upload_files(
         [
-            pp_elements.mixins[Constants.TRIPLES]._build_file_name(n, t, i)
+            # pp_elements.mixins[Constants.TRIPLES]._build_file_name(n, t, i)
+            pp_elements._triples._build_file_name(n, t, i)
             for i in range(n)
         ]
     )
     zero_urls = s3manager.upload_files(
         [
-            pp_elements.mixins[Constants.ZEROS]._build_file_name(n, t, i)
+            # pp_elements.mixins[Constants.ZEROS]._build_file_name(n, t, i)
+            pp_elements._zeros._build_file_name(n, t, i)
             for i in range(n)
         ]
     )
@@ -231,6 +234,8 @@ def trigger_run(run_id, skip_setup, max_k, only_setup, cleanup):
     logging.info(f"Run Id: {run_id}")
     ec2manager, s3manager = EC2Manager(), S3Manager(run_id)
     instance_ids, instance_ips = ec2manager.create_instances()
+    logging.info(f"instance_ids: {instance_ids}")
+    logging.info(f"instance_ips: {instance_ips}")
 
     if cleanup:
         instance_commands = [
