@@ -43,3 +43,13 @@ docker tag honeybadger:latest smkuls/honeybadgermpc:latest # Replace with approp
 docker push smkuls/honeybadgermpc:latest # Replace with appropriate DockerHub location
 
 ```
+
+# Running the experiment on different EC2 instances
+This section is for those who wish to run the experiments on EC2
+instances that differ from the ones found in [aws-config.json](
+./aws-config.json).
+
+## Setting up EC2
+Follow the steps at
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/get-set-up-for-amazon-ec2.html.
+
