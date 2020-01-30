@@ -59,6 +59,8 @@ def get_ipc_setup_commands(s3manager, instance_ids):
 
     # from honeybadgermpc.preprocessing import PreProcessingConstants as Constants
 
+    logging.info("Getting ipc commands ...")
+
     n, t = AwsConfig.TOTAL_VM_COUNT, AwsConfig.MPC_CONFIG.T
 
     num_triples = AwsConfig.MPC_CONFIG.NUM_TRIPLES
@@ -67,6 +69,7 @@ def get_ipc_setup_commands(s3manager, instance_ids):
     pp_elements.generate_zeros(num_triples, n, t)
     pp_elements.generate_triples(num_triples, n, t)
 
+    logging.info(f"Uploading triples to S3 ...")
     triple_urls = s3manager.upload_files(
         [
             # pp_elements.mixins[Constants.TRIPLES]._build_file_name(n, t, i)
@@ -74,6 +77,8 @@ def get_ipc_setup_commands(s3manager, instance_ids):
             for i in range(n)
         ]
     )
+    logging.info(f"... triple urls: {triple_urls}.")
+    logging.info("Uploading zeros to S3 ...")
     zero_urls = s3manager.upload_files(
         [
             # pp_elements.mixins[Constants.ZEROS]._build_file_name(n, t, i)
@@ -81,6 +86,7 @@ def get_ipc_setup_commands(s3manager, instance_ids):
             for i in range(n)
         ]
     )
+    logging.info("... zero urls: {zero_urls}.")
 
     setup_commands = [
         [
@@ -178,6 +184,7 @@ def get_powermixing_setup_commands(max_k, runid, s3manager, instance_ids):
     from honeybadgermpc.preprocessing import PreProcessedElements
 
     # from honeybadgermpc.preprocessing import PreProcessingConstants as Constants
+    logging.info("Getting powermixing commands ...")
 
     n, t = AwsConfig.TOTAL_VM_COUNT, AwsConfig.MPC_CONFIG.T
     k = max_k if max_k else AwsConfig.MPC_CONFIG.K

@@ -198,17 +198,16 @@ async def verify_all_connections(peers, n, my_id):
 async def test_mpc_programs(peers, n, t, my_id):
     from honeybadgermpc.mpc import test_prog1, test_prog2, test_batchopening
     from honeybadgermpc.preprocessing import PreProcessedElements
-    from honeybadgermpc.preprocessing import wait_for_preprocessing, preprocessing_done
 
     if not HbmpcConfig.skip_preprocessing:
+        pp_elements = PreProcessedElements()
         # Only one party needs to generate the preprocessed elements for testing
         if HbmpcConfig.my_id == 0:
-            pp_elements = PreProcessedElements()
             pp_elements.generate_zeros(1000, HbmpcConfig.N, HbmpcConfig.t)
             pp_elements.generate_triples(1000, HbmpcConfig.N, HbmpcConfig.t)
-            preprocessing_done()
+            pp_elements.preprocessing_done()
         else:
-            await wait_for_preprocessing()
+            await pp_elements.wait_for_preprocessing()
 
     async with ProcessProgramRunner(peers, n, t, my_id) as runner:
         test_prog1  # r1 = runner.execute("0", test_prog1)

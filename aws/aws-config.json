@@ -52,6 +52,8 @@
     },
 
     "docker": {
-        "image_path": "rahulsm2/honeybadgermpc:latest"
+        "_image_path1": "rahulsm2/honeybadgermpc:latest",
+        "_image_path2": "initc3/honeybadgermpc:133c8b05",
+        "image_path": "sbellem/honeybadgermpc"
     }
 }

@@ -410,7 +410,7 @@ class RandomPreProcessing(PreProcessingMixin):
 
     def _get_value(self, context, key, t=None):
         t = t if t is not None else context.t
-        assert self.count[key] >= 1
+        assert self.count[key] >= 1, f"key is: {key}\ncount is: {self.count}\n"
         return context.Share(next(self.cache[key]), t), 1
 
 
@@ -426,7 +426,9 @@ class SimplePreProcessing(PreProcessingMixin):
         assert self.count[key] >= self._preprocessing_stride, (
             f"Expected "
             f"{self._preprocessing_stride} elements of {self.preprocessing_name}, "
-            f"but found only {self.count[key]}"
+            f"but found only {self.count[key]}\n"
+            f"key is: {key}\n"
+            f"count is: {self.count}\n"
         )
 
         values = tuple(
