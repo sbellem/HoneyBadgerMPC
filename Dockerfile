@@ -53,7 +53,7 @@ RUN npm install -g ganache-cli
 
 # Install remaining pip dependencies here
 WORKDIR $HBMPC_HOME
-RUN pip install -e .['dev']
+RUN pip install -e .["dev"]
 
 FROM pre-dev as dev
 COPY . .
