@@ -37,16 +37,25 @@ def get_instance_configs(instance_ips, extra={}):
 
 
 def run_commands_on_instances(
-    ec2manager, commands_per_instance_list, verbose=True, output_file_prefix=None
+    ec2manager, commands_per_instance_list, *, verbose=True, output_file_prefix=None
 ):
 
-    node_threads = [
-        threading.Thread(
-            target=ec2manager.execute_command_on_instance,
-            args=[id, commands, verbose, output_file_prefix],
+    node_threads = []
+    for id, commands in commands_per_instance_list:
+        logging.info(f"id: {id}, commands: {commands}")
+        node_threads.append(
+            threading.Thread(
+                target=ec2manager.execute_command_on_instance,
+                args=[id, commands, verbose, output_file_prefix],
+            )
         )
-        for id, commands in commands_per_instance_list
-    ]
+    # node_threads = [
+    #     threading.Thread(
+    #         target=ec2manager.execute_command_on_instance,
+    #         args=[id, commands, verbose, output_file_prefix],
+    #     )
+    #     for id, commands in commands_per_instance_list
+    # ]
 
     for thread in node_threads:
         thread.start()
@@ -86,7 +95,7 @@ def get_ipc_setup_commands(s3manager, instance_ids):
             for i in range(n)
         ]
     )
-    logging.info("... zero urls: {zero_urls}.")
+    logging.info(f"... zero urls: {zero_urls}.")
 
     setup_commands = [
         [
@@ -235,6 +244,9 @@ def get_powermixing_setup_commands(max_k, runid, s3manager, instance_ids):
         commands.append(
             f"cd sharedata; curl -sSO {url}; bash download_input.sh {fname}"
         )
+        commands.append(
+            f"ls -l sharedata/; mkdir -p backups; cp sharedata/*.share backups/"
+        )
         setup_commands.append([instance_id, commands])
 
     logging.info(f"Upload completed in {total_time} seconds.")
@@ -292,7 +304,7 @@ def trigger_run(run_id, skip_setup, max_k, only_setup, cleanup):
         [instance_id, ["mkdir -p config", "cd config; curl -sSO %s" % (config_url)]]
         for config_url, instance_id in zip(config_urls, instance_ids)
     ]
-    run_commands_on_instances(ec2manager, config_update_commands, False)
+    run_commands_on_instances(ec2manager, config_update_commands, verbose=True)
     logging.info("Config update completed successfully.")
 
     if not skip_setup:
@@ -311,7 +323,7 @@ def trigger_run(run_id, skip_setup, max_k, only_setup, cleanup):
         elif AwsConfig.MPC_CONFIG.COMMAND.endswith("hbavss_light"):
             setup_commands = get_hbavss_setup_commands(s3manager, instance_ids)
         logging.info("Triggering setup commands.")
-        run_commands_on_instances(ec2manager, setup_commands, False)
+        run_commands_on_instances(ec2manager, setup_commands, verbose=True)
 
     if not only_setup:
         logging.info("Setup commands executed successfully.")
@@ -338,7 +350,10 @@ def trigger_run(run_id, skip_setup, max_k, only_setup, cleanup):
         ]
         os.makedirs(run_id, exist_ok=True)
         run_commands_on_instances(
-            ec2manager, log_collection_cmds, True, f"{run_id}/benchmark-logs"
+            ec2manager,
+            log_collection_cmds,
+            verbose=True,
+            output_file_prefix=f"{run_id}/benchmark-logs",
         )
 
     s3manager.cleanup()

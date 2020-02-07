@@ -1,11 +1,11 @@
 {
     "mpc" : {
-        "command": "python -m honeybadgermpc.ipc",
+        "command": "python -m apps.asynchromix.powermixing",
         "t": 1,
-        "n": 4,
-        "k": 1,
+        "n": 5,
+        "k": 100,
         "num_faulty_nodes": 0,
-        "num_triples": 1000,
+        "num_triples": 200000,
         "port": 7000
     },
 
@@ -52,8 +52,6 @@
     },
 
     "docker": {
-        "_image_path1": "rahulsm2/honeybadgermpc:latest",
-        "_image_path2": "initc3/honeybadgermpc:133c8b05",
         "image_path": "sbellem/honeybadgermpc"
     }
 }
