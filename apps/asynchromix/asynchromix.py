@@ -12,6 +12,7 @@ from ethereum.tools._solidity import compile_code as compile_source
 
 from web3 import HTTPProvider, Web3
 from web3.contract import ConciseContract
+from web3.exceptions import TransactionNotFound
 
 from apps.asynchromix.butterfly_network import iterated_butterfly_network
 
@@ -36,7 +37,10 @@ field = GF(Subgroup.BLS12_381)
 
 async def wait_for_receipt(w3, tx_hash):
     while True:
-        tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
+        try:
+            tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
+        except TransactionNotFound:
+            tx_receipt = None
         if tx_receipt is not None:
             break
         await asyncio.sleep(5)
