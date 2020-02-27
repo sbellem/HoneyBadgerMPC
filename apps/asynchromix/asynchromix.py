@@ -353,18 +353,21 @@ class AsynchromixServer(object):
                 pp_elements._init_data_dir()
 
                 # Overwrite triples and one_minus_ones
-                for kind, elems in zip(("triples", "one_minus_one"), (triples, bits)):
+                for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
                     if kind == "triples":
                         elems = flatten_lists(elems)
                     elems = [e.value for e in elems]
 
-                    mixin = pp_elements.mixins[kind]
+                    # mixin = pp_elements.mixins[kind]
+                    mixin = getattr(pp_elements, f"_{kind}")
                     mixin_filename = mixin.build_filename(ctx.N, ctx.t, ctx.myid)
                     mixin._write_preprocessing_file(
                         mixin_filename, ctx.t, ctx.myid, elems, append=False
                     )
 
-                pp_elements._init_mixins()
+                # FIXME Not sure what this is supposed to be ...
+                # the method does not exist.
+                # pp_elements._init_mixins()
 
                 logging.info(f"[{ctx.myid}] Running permutation network")
                 inps = list(map(ctx.Share, inputs))
@@ -488,6 +491,7 @@ async def main_loop(w3):
     ]
 
     # Step 3. Create the client
+    # TODO communicate with server instead of fetching from list of servers
     async def req_mask(i, idx):
         # client requests input mask {idx} from server {i}
         return servers[i]._inputmasks[idx]
