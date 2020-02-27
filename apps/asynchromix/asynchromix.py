@@ -353,6 +353,7 @@ class AsynchromixServer(object):
                 pp_elements._init_data_dir()
 
                 # Overwrite triples and one_minus_ones
+                logging.info("overwriting triples and one_minus_ones")
                 for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
                     if kind == "triples":
                         elems = flatten_lists(elems)
@@ -361,6 +362,10 @@ class AsynchromixServer(object):
                     # mixin = pp_elements.mixins[kind]
                     mixin = getattr(pp_elements, f"_{kind}")
                     mixin_filename = mixin.build_filename(ctx.N, ctx.t, ctx.myid)
+                    logging.info(
+                        f"writing preprocessed {kind} to file {mixin_filename}"
+                    )
+                    logging.info(f"number of elements is: {len(elems)}")
                     mixin._write_preprocessing_file(
                         mixin_filename, ctx.t, ctx.myid, elems, append=False
                     )
@@ -368,6 +373,8 @@ class AsynchromixServer(object):
                 # FIXME Not sure what this is supposed to be ...
                 # the method does not exist.
                 # pp_elements._init_mixins()
+                pp_elements._triples._refresh_cache()
+                pp_elements._one_minus_ones._refresh_cache()
 
                 logging.info(f"[{ctx.myid}] Running permutation network")
                 inps = list(map(ctx.Share, inputs))

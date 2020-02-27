@@ -192,7 +192,10 @@ class PreProcessingMixin(ABC):
         """ Refreshes the cache by reading in sharedata files, and
         updating the cache values and count variables.
         """
-        logging.debug("refresh cache ...")
+        logging.info(f"(- {self.preprocessing_name} -) refreshing cache")
+        logging.info(
+            f"(- {self.preprocessing_name} -) before cache refresh, count is: {dict(self.count)}"
+        )
         self.cache = defaultdict(chain)
         self.count = defaultdict(int)
 
@@ -212,7 +215,9 @@ class PreProcessingMixin(ABC):
             self.cache[key] = chain(values)
             self.count[key] = len(values)
 
-        logging.debug(f"after cache refresh, count is: {self.count}")
+        logging.info(
+            f"(- {self.preprocessing_name} -) after cache refresh, count is: {dict(self.count)}"
+        )
 
     def _write_polys(self, n, t, polys, append=False, prefix=None):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
