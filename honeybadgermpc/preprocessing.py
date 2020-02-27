@@ -99,7 +99,10 @@ class PreProcessingMixin(ABC):
         key = (context.myid, context.N, context.t)
 
         to_return, used = self._get_value(context, key, *args, **kwargs)
+        logging.info(f'got value "{to_return}" and used "{used}"')
+        logging.info(f"decrement count by {used}")
         self.count[key] -= used
+        logging.info(f"count is now: {self.count}")
 
         return to_return
 
@@ -189,6 +192,7 @@ class PreProcessingMixin(ABC):
         """ Refreshes the cache by reading in sharedata files, and
         updating the cache values and count variables.
         """
+        logging.info("refresh cache ...")
         self.cache = defaultdict(chain)
         self.count = defaultdict(int)
 
@@ -207,6 +211,8 @@ class PreProcessingMixin(ABC):
 
             self.cache[key] = chain(values)
             self.count[key] = len(values)
+
+        logging.info(f"after cache refresh, count is: {self.count}")
 
     def _write_polys(self, n, t, polys, append=False, prefix=None):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
@@ -410,7 +416,7 @@ class RandomPreProcessing(PreProcessingMixin):
 
     def _get_value(self, context, key, t=None):
         t = t if t is not None else context.t
-        assert self.count[key] >= 1
+        assert self.count[key] >= 1, f"key is: {key}\ncount is: {self.count}\n"
         return context.Share(next(self.cache[key]), t), 1
 
 
@@ -426,9 +432,12 @@ class SimplePreProcessing(PreProcessingMixin):
         assert self.count[key] >= self._preprocessing_stride, (
             f"Expected "
             f"{self._preprocessing_stride} elements of {self.preprocessing_name}, "
-            f"but found only {self.count[key]}"
+            f"but found only {self.count[key]}\n"
+            f"key is: {key}\n"
+            f"count is: {self.count}\n"
         )
 
+        logging.info("getting value ...")
         values = tuple(
             context.Share(next(self.cache[key]))
             for _ in range(self._preprocessing_stride)
@@ -572,6 +581,9 @@ class PreProcessedElements:
     def clear_preprocessing(self):
         """ Delete all things from the preprocessing folder
         """
+        logging.info(
+            f"Deleting all files from preprocessing folder: {self.data_directory}"
+        )
         rmtree(
             self.data_directory,
             onerror=lambda f, p, e: logging.debug(
