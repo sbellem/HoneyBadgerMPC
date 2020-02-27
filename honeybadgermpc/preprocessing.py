@@ -28,7 +28,7 @@ class PreProcessingConstants(Enum):
     BITS = "bits"
     POWERS = "powers"
     SHARES = "share"
-    ONE_MINUS_ONE = "one_minus_one"
+    ONE_MINUS_ONES = "one_minus_ones"
     DOUBLE_SHARES = "double_shares"
     SHARE_BITS = "share_bits"
 
@@ -192,7 +192,7 @@ class PreProcessingMixin(ABC):
         """ Refreshes the cache by reading in sharedata files, and
         updating the cache values and count variables.
         """
-        logging.info("refresh cache ...")
+        logging.debug("refresh cache ...")
         self.cache = defaultdict(chain)
         self.count = defaultdict(int)
 
@@ -212,7 +212,7 @@ class PreProcessingMixin(ABC):
             self.cache[key] = chain(values)
             self.count[key] = len(values)
 
-        logging.info(f"after cache refresh, count is: {self.count}")
+        logging.debug(f"after cache refresh, count is: {self.count}")
 
     def _write_polys(self, n, t, polys, append=False, prefix=None):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
@@ -496,7 +496,7 @@ class BitPreProcessing(SimplePreProcessing):
 
 
 class SignedBitPreProcessing(SimplePreProcessing):
-    preprocessing_name = PreProcessingConstants.ONE_MINUS_ONE.value
+    preprocessing_name = PreProcessingConstants.ONE_MINUS_ONES.value
     _preprocessing_stride = 1
 
     def _generate_polys(self, k, n, t):
