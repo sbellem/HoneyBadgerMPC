@@ -168,3 +168,38 @@ async def test_get_share_bits():
     program_runner = TaskProgramRunner(n, t)
     program_runner.add(_prog)
     await program_runner.join()
+
+
+@mark.asyncio
+async def test_get_cross_shard_masks():
+    n, t = 4, 1
+    shard_1_id, shard_2_id = 3, 8
+    # num_triples = 2
+    pp_elements = PreProcessedElements()
+    # pp_elements.generate_triples(1000, n, t)
+    breakpoint()
+    pp_elements.generate_cross_shard_masks(
+        100, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
+    )
+
+    # async def _prog(ctx):
+    #    for _ in range(num_triples):
+    #        a_sh, b_sh, ab_sh = ctx.preproc.get_triples(ctx)
+    #        a, b, ab = await a_sh.open(), await b_sh.open(), await ab_sh.open()
+    #        assert a * b == ab
+
+    # program_runner = TaskProgramRunner(n, t)
+    # program_runner.add(_prog)
+    # await program_runner.join()
+
+
+def test_generate_cross_shard_masks():
+    n, t = 4, 1
+    shard_1_id, shard_2_id = 3, 8
+    # num_triples = 2
+    pp_elements = PreProcessedElements()
+    # pp_elements.generate_triples(1000, n, t)
+    breakpoint()
+    pp_elements.generate_cross_shard_masks(
+        100, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
+    )

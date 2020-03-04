@@ -1,3 +1,10 @@
+"""
+TODO:
+
+Consider renaming to FakePreprocessing ...
+
+Real preprocsseing takes place in offline_randousha
+"""
 import asyncio
 import logging
 import os
@@ -35,6 +42,7 @@ class PreProcessingConstants(Enum):
     ONE_MINUS_ONES = "one_minus_ones"
     DOUBLE_SHARES = "double_shares"
     SHARE_BITS = "share_bits"
+    CROSS_SHARDS_MASKS = "cross_shards_masks"
 
     def __str__(self):
         return self.value
@@ -225,7 +233,7 @@ class PreProcessingMixin(ABC):
             f"(- {self.preprocessing_name} -) after cache refresh, count is: {dict(self.count)}"
         )
 
-    def _write_polys(self, n, t, polys, append=False, prefix=None):
+    def _write_polys(self, n, t, polys, append=False, prefix=None, shard_id=None):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
         write the preprocessing for the share values represented by the polnomials.
 
@@ -243,8 +251,11 @@ class PreProcessingMixin(ABC):
 
         for i in range(n):
             values = [v[i] for v in all_values]
-            file_name = self.build_filename(n, t, i, prefix=prefix)
-            self._write_preprocessing_file(file_name, t, i, values, append=append)
+            context_id = i if shard_id is None else f"{shard_id}:{i}"
+            file_name = self.build_filename(n, t, context_id, prefix=prefix)
+            self._write_preprocessing_file(
+                file_name, t, context_id, values, append=append
+            )
 
             key = (i, n, t)
             if append:
@@ -431,6 +442,38 @@ class RandomPreProcessing(PreProcessingMixin):
         return context.Share(next(self.cache[key]), t), 1
 
 
+class CrossShardMasksPreProcessing(PreProcessingMixin):
+    preprocessing_name = PreProcessingConstants.CROSS_SHARDS_MASKS.value
+    _preprocessing_stride = 1
+
+    def generate_values(self, k, n, t, *, shard_1_id, shard_2_id, append=False):
+        polys = self._generate_polys(
+            k, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
+        )
+        for shard_id, polys in polys.items():
+            self._write_polys(n, t, polys, append=False, shard_id=shard_id)
+
+    def _generate_polys(self, k, n, t, *, shard_1_id, shard_2_id):
+        """Return a pair of polys for each k value
+
+        .. todo: test
+
+        .. note:: negligible chance that coeffs is empty
+        """
+        polys = defaultdict(list)
+        for _ in range(k):
+            poly_1 = self.poly.random(t)
+            poly_2 = self.poly.random(t, y0=poly_1.coeffs[0])
+            polys[shard_1_id].append(poly_1)
+            polys[shard_2_id].append(poly_2)
+        return polys
+
+    def _get_value(self, context, key, t=None):
+        t = t if t is not None else context.t
+        assert self.count[key] >= 1, f"key is: {key}\ncount is: {self.count}\n"
+        return context.Share(next(self.cache[key]), t), 1
+
+
 class SimplePreProcessing(PreProcessingMixin):
     """ Subclass of PreProcessingMixin to be used in the trivial case
     where the only thing required to get a value is to read _preprocessing_stride
@@ -577,6 +620,9 @@ class PreProcessedElements:
         self._share_bits = ShareBitsPreProcessing(
             self.field, self.poly, self.data_directory
         )
+        self._cross_shard_masks = CrossShardMasksPreProcessing(
+            self.field, self.poly, self.data_directory
+        )
 
     @classmethod
     def reset_cache(cls):
@@ -656,6 +702,16 @@ class PreProcessedElements:
     def generate_share(self, n, t, *args, **kwargs):
         return self._generate(self._shares, 1, n, t, *args, **kwargs)
 
+    def generate_cross_shard_masks(self, k, n, t, *, shard_1_id, shard_2_id):
+        return self._generate(
+            self._cross_shard_masks,
+            k,
+            n,
+            t,
+            shard_1_id=shard_1_id,
+            shard_2_id=shard_2_id,
+        )
+
     ## Preprocessing retrieval methods:
 
     def get_triples(self, context):
@@ -687,3 +743,6 @@ class PreProcessedElements:
 
     def get_share_bits(self, context):
         return self._share_bits.get_value(context)
+
+    def get_cross_shard_masks(self, context):
+        return self._cross_shard_masks.get_value(context)
