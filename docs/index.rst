@@ -26,8 +26,9 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: Integrations
+    :caption: Blockchain Integrations
 
+    integrations/eth
     integrations/hyperledger-fabric
 
 .. toctree::
