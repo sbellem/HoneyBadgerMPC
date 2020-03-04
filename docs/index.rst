@@ -34,6 +34,7 @@
     :maxdepth: 1
     :caption: Integrations
 
+    integrations/eth
     integrations/hyperledger-fabric
 
 .. toctree::
