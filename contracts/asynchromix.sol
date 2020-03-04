@@ -1,5 +1,7 @@
 pragma solidity >=0.4.22 <0.6.0;
 
+/// @title A blockchain-based MPC coordinator for Asychromix.
+/// @author Andrew Miller
 contract AsynchromixCoordinator {
     /* A blockchain-based MPC coordinator for Asychromix.
      * 1. Keeps track of the MPC "preprocessing buffer"
@@ -22,8 +24,8 @@ contract AsynchromixCoordinator {
 	    servers.length = n;
 	    for (uint i = 0; i < n; i++) {
 	        servers[i] = _servers[i];
-    	    servermap[_servers[i]] = i+1; // servermap is off-by-one
-    	}
+            servermap[_servers[i]] = i+1; // servermap is off-by-one
+        }
     }
    /*
     * It's necessary to paste JSON into the "_servers" constructor to use the Remix IDE
@@ -163,7 +165,6 @@ contract AsynchromixCoordinator {
         input_queue[idx].masked_input = masked_input;
         input_queue[idx].inputmask = inputmask_idx;
 
-        // QUESTION: What is the purpose of this event?
         emit MessageSubmitted(idx, inputmask_idx, masked_input);
 
         // The input masks are deactivated after first use
