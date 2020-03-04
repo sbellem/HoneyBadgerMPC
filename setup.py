@@ -36,6 +36,7 @@ DEV_REQUIRES = ["ipdb", "ipython"]
 DOCS_REQUIRE = [
     "Sphinx",
     "sphinx-autobuild",
+    "sphinxcontrib-soliditydomain",
     "sphinx_rtd_theme",
     "sphinx_tabs",
     "m2r",
