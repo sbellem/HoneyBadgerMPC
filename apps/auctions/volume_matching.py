@@ -5,16 +5,17 @@ Volume Matching Auction : buy and sell orders are matched only on volume while p
 """
 import asyncio
 import logging
+
+from honeybadgermpc.mpc import TaskProgramRunner
 from honeybadgermpc.preprocessing import (
     PreProcessedElements as FakePreProcessedElements,
 )
+from honeybadgermpc.progs.fixedpoint import FixedPoint
 from honeybadgermpc.progs.mixins.share_arithmetic import (
-    MixinConstants,
     BeaverMultiply,
     BeaverMultiplyArrays,
+    MixinConstants,
 )
-from honeybadgermpc.progs.fixedpoint import FixedPoint
-from honeybadgermpc.mpc import TaskProgramRunner
 
 config = {
     MixinConstants.MultiplyShareArray: BeaverMultiplyArrays(),
