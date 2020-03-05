@@ -1,15 +1,18 @@
+import logging
+import random
+
 from pytest import mark
+
+from apps.auctions.volume_matching import (
+    compute_bids,
+    compute_new_balances,
+    create_clear_share,
+    create_secret_share,
+    volume_matching,
+)
+
 from honeybadgermpc.preprocessing import (
     PreProcessedElements as FakePreProcessedElements,
-)
-import random
-import logging
-from apps.auctions.volume_matching import (
-    create_secret_share,
-    create_clear_share,
-    compute_bids,
-    volume_matching,
-    compute_new_balances,
 )
 from honeybadgermpc.progs.mixins.share_arithmetic import (
     BeaverMultiply,
