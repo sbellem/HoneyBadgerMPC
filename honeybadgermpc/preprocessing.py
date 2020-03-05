@@ -15,6 +15,7 @@ from enum import Enum
 from itertools import chain
 from os import listdir, makedirs
 from os.path import isfile, join
+from pathlib import Path
 from random import randint
 from shutil import rmtree
 from uuid import uuid4
@@ -43,6 +44,7 @@ class PreProcessingConstants(Enum):
     DOUBLE_SHARES = "double_shares"
     SHARE_BITS = "share_bits"
     CROSS_SHARDS_MASKS = "cross_shards_masks"
+    SHARE_FILE_EXT = ".share"
 
     def __str__(self):
         return self.value
@@ -84,6 +86,10 @@ class PreProcessingMixin(ABC):
         """ Beginning prefix of filenames storing preprocessing values for this mixin
         """
         return f"{self.data_dir}{self.preprocessing_name}"
+
+    @property
+    def data_dir_path(self):
+        return Path(self.data_dir)
 
     def min_count(self, n, t):
         """ Returns the minimum number of preprocessing stored in the cache across all
@@ -166,7 +172,7 @@ class PreProcessingMixin(ABC):
         if refresh_cache:
             self._refresh_cache()
 
-    def build_filename(self, n, t, context_id, prefix=None, suffix=""):
+    def build_filename(self, n, t, context_id, prefix=None, **kwargs):
         """ Given a file prefix, and metadata, return the filename to put
         the shares in.
 
@@ -176,15 +182,6 @@ class PreProcessingMixin(ABC):
             context_id: myid of the mpc context we're preprocessing for.
             prefix: filename prefix, e.g. "sharedata/triples".
                 Defaults to self.file_prefix
-            suffix: Optional string to append at the end of the filename.
-                Defaults to empty string "". Please note no delimiter or separation
-                character will pre-pended to the suffix. It is the responsibility of
-                the caller to include a delimiter if needed. Example:
-
-                .. code-block:: python
-
-                    >>> prefix, n, t, context_id, suffix = "p", 5, 1, "4", "_a1'
-                    'p_5_1-4_a1'
 
         output:
             Filename to use
@@ -192,7 +189,7 @@ class PreProcessingMixin(ABC):
         if prefix is None:
             prefix = self.file_prefix
 
-        return f"{prefix}_{n}_{t}-{context_id}{suffix}.share"
+        return f"{prefix}_{n}_{t}-{context_id}.share"
 
     def _parse_file_name(self, file_name):
         """ Given a potential filename, return (n, t, context_id) of the
@@ -243,7 +240,7 @@ class PreProcessingMixin(ABC):
         )
 
     def _write_polys(
-        self, n, t, polys, append=False, prefix=None, shard_id=None, suffix=""
+        self, n, t, polys, append=False, prefix=None, shard_id=None, recv_shard_id=None
     ):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
         write the preprocessing for the share values represented by the polnomials.
@@ -254,6 +251,12 @@ class PreProcessingMixin(ABC):
             t: number of faults tolerated by this preprocessing
             polys: polynomials corresponding to secret share values to write
             append: Whether or not to append shares to an existing file, or to overwrite.
+            shard_id: If in a sharded network, id of the shard the elements need
+                to be written to file for.
+            recv_shard_id: For cross shard operations, the id of the shard that is
+                on the receiving end. That is, the elements to be written to file,
+                are meant to be used when shard_id needs to send "secured" data
+                to another shard.
         """
         polys = [[coeff.value for coeff in poly.coeffs] for poly in polys]
         all_values = vandermonde_batch_evaluate(
@@ -262,15 +265,20 @@ class PreProcessingMixin(ABC):
 
         for i in range(n):
             values = [v[i] for v in all_values]
-            context_id = i if shard_id is None else f"{shard_id}:{i}"
+            context_id = i if shard_id is None else f"{i}-{shard_id}"
             file_name = self.build_filename(
-                n, t, context_id, prefix=prefix, suffix=suffix
+                n,
+                t,
+                context_id,
+                prefix=prefix,
+                shard_id=shard_id,
+                recv_shard_id=recv_shard_id,
             )
             self._write_preprocessing_file(
                 file_name, t, context_id, values, append=append
             )
 
-            key = (i, n, t)
+            key = (context_id, n, t)
             if append:
                 self.cache[key] = chain(self.cache[key], values)
                 self.count[key] += len(values)
@@ -459,14 +467,91 @@ class CrossShardMasksPreProcessing(PreProcessingMixin):
     preprocessing_name = PreProcessingConstants.CROSS_SHARDS_MASKS.value
     _preprocessing_stride = 1
 
+    def mk_subdirs(self, context_id):
+        """Create intermediate sub directories for the given server id, aka
+        context id.
+
+        Parameters:
+        -----------
+        context_id : str or int
+            The id of a server. In a sharded network it MUST be a string
+            of the form: ``"{myid}:{shard_id}"`` where ``myid`` is the integer
+            used to identify a server within a shard.
+
+        Returns
+        -------
+        Path object.
+        """
+        new_path = self.data_dir_path.joinpath(context_id, self.preprocessing_name)
+        new_path.mkdir(exist_ok=True)
+        return new_path
+
+    def build_filename(
+        self, n, t, context_id, prefix=None, shard_id=None, recv_shard_id=None, **kwargs
+    ):
+        """ Given context id, shard ids, and metadata, return the filename to put
+        the shares in.
+
+        The filename structure is as follows:
+
+            data_dir/context_id/preprocessing_name/n_t-sh1_sh2.share
+
+        For example, for node 1, in shard 5, and shard 108 as a receiving shard, in a
+        network of n=1000 and t=300:
+
+            sharedata/1-5/cross_shard_masks/1000_300-5_8.share
+
+        The reasoning behind the above file path is that by having the context id as
+        a base directory it helps to remind one that the files are meant to be seen
+        only by the node in question. In other words, everything under the directory
+        "sharedata/1-5/" would be private in a real world scenario.
+
+        Parsing this kind of file path should also be easier, such that regular
+        expressions will not be needed.
+
+        Parameters
+        ----------
+        n : int
+            Total number of nodes in the shard.
+        t : int
+            Polynomial degree, and maximum fault tolerance for the
+            number of nodes that may deviate from the protocol.
+        context_id : str
+            {myid}-{shard_id} of the mpc context we're preprocessing for.
+        shard_id : str or int
+            The id of the shard that would mask an input and
+            send it to the other shard.
+
+            MUST match the shard id in context id.
+        recv_shard_idc: str or int
+            The id of the shard that would receive a mask input
+            fromcthe other shard.
+
+        output:
+            Filename to use
+        """
+        dir_path = self.data_dir_path.joinpath(context_id, self.preprocessing_name)
+        dir_path.mkdir(parents=True, exist_ok=True)
+        file_path = dir_path.joinpath(f"{n}_{t}-{shard_id}_{recv_shard_id}")
+        full_file_path = file_path.with_suffix(
+            PreProcessingConstants.SHARE_FILE_EXT.value
+        )
+        return str(full_file_path)
+
     def generate_values(self, k, n, t, *, shard_1_id, shard_2_id, append=False):
         polys = self._generate_polys(
             k, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
         )
-        suffix = f"_{shard_1_id}_{shard_2_id}"
+        shard_ids = {shard_1_id, shard_2_id}
         for shard_id, polys in polys.items():
+            recv_shard_id = (shard_ids - {shard_id}).pop()
             self._write_polys(
-                n, t, polys, append=False, shard_id=shard_id, suffix=suffix
+                n,
+                t,
+                polys,
+                append=False,
+                shard_id=shard_id,
+                recv_shard_id=recv_shard_id,
             )
 
     def _generate_polys(self, k, n, t, *, shard_1_id, shard_2_id):
