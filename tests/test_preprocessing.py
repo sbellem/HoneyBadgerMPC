@@ -1,7 +1,5 @@
 import asyncio
 
-# from pathlib import Path
-
 from pytest import mark
 
 from honeybadgermpc.mpc import TaskProgramRunner
@@ -174,25 +172,50 @@ async def test_get_share_bits():
 
 @mark.asyncio
 async def test_get_cross_shard_masks():
-    n, t = 4, 1
-    shard_1_id, shard_2_id = 3, 8
-    # num_triples = 2
+    k, n, t = 100, 4, 1
+    shards = (3, 8)
     pp_elements = PreProcessedElements()
-    # pp_elements.generate_triples(1000, n, t)
-    breakpoint()
     pp_elements.generate_cross_shard_masks(
-        100, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
+        k, n, t, shard_1_id=shards[0], shard_2_id=shards[1]
     )
+    cross_shard_masks = pp_elements._cross_shard_masks
+    # check that all masks are there
+    assert all(
+        (f"{i}-{s}", n, t) in cross_shard_masks.count for i in range(n) for s in shards
+    )
+    num_masks = 2
+    masks_3 = []
+    masks_8 = []
 
-    # async def _prog(ctx):
-    #    for _ in range(num_triples):
-    #        a_sh, b_sh, ab_sh = ctx.preproc.get_triples(ctx)
-    #        a, b, ab = await a_sh.open(), await b_sh.open(), await ab_sh.open()
-    #        assert a * b == ab
+    # TODO
+    # * simplify the 2 progs, and
+    # * if possible only have one def, parametrized with the shard id
+    # * also: can the shard be accessed via the ctx object instead? The main
+    #   point is that information seems to be redundant ... if the ctx has
+    #   access to the shard id then perhaps no need to pass it to the method
+    #  `get_cross_shard_masks()`
+    async def _prog3(ctx):
+        for _ in range(num_masks):
+            mask_share = ctx.preproc.get_cross_shard_masks(ctx, shards[0])
+            mask = await mask_share.open()
+            masks_3.append(mask)
 
-    # program_runner = TaskProgramRunner(n, t)
-    # program_runner.add(_prog)
-    # await program_runner.join()
+    async def _prog8(ctx):
+        for _ in range(num_masks):
+            mask_share = ctx.preproc.get_cross_shard_masks(ctx, shards[1])
+            mask = await mask_share.open()
+            masks_8.append(mask)
+
+    program_runner = TaskProgramRunner(n, t)
+    program_runner.add(_prog3, shard_id=shards[0])
+    await program_runner.join()
+    program_runner.add(_prog8, shard_id=shards[1])
+    await program_runner.join()
+    print(f"\nmasks for shard 3: {masks_3}")
+    print(f"len of masks: {len(masks_3)}")
+    print(f"\nmasks for shard 8: {masks_8}")
+    print(f"len of masks: {len(masks_8)}")
+    assert masks_3 == masks_8
 
 
 def test_generate_cross_shard_masks():
@@ -203,16 +226,17 @@ def test_generate_cross_shard_masks():
         k, n, t, shard_1_id=shards[0], shard_2_id=shards[1]
     )
     cross_shard_masks = pp_elements._cross_shard_masks
-    # check the cache
+    # check the cache and count
     cache = cross_shard_masks.cache
+    count = cross_shard_masks.count
     assert len(cache) == 2 * n  # there are 2 shards with n servers in each
     # Check that the cache contains all expected keys. A key is a 3-tuple made
     # from (context_id, n, t), The context_id is made from "{i}-{shard_id}".
     assert all((f"{i}-{s}", n, t) in cache for i in range(n) for s in shards)
-    breakpoint()
     assert all(len(tuple(elements)) == k for elements in cache.values())
+    assert all(c == k for c in count.values())
+    assert all((f"{i}-{s}", n, t) in count for i in range(n) for s in shards)
     # check all the expected files have been created
-    # TODO parse the files to be sure their content is as expected
     data_dir_path = cross_shard_masks.data_dir_path
     for shard_index, shard_id in enumerate(shards):
         other_shard = shards[1 - shard_index]
@@ -221,8 +245,14 @@ def test_generate_cross_shard_masks():
             assert node_path.exists()
             csm_path = node_path.joinpath(cross_shard_masks.preprocessing_name)
             assert csm_path.exists()
-            file_path = csm_path.joinpath(f"{n}_{t}-{shard_id}_{other_shard}")
-            full_file_path = file_path.with_suffix(
-                PreProcessingConstants.SHARE_FILE_EXT.value
-            )
-            assert full_file_path.exists()
+            file_path = csm_path.joinpath(
+                f"{n}_{t}-{shard_id}_{other_shard}"
+            ).with_suffix(PreProcessingConstants.SHARE_FILE_EXT.value)
+            assert file_path.exists()
+            with file_path.open() as f:
+                _lines = f.readlines()
+            lines = [int(line) for line in _lines]
+            assert len(lines) == 3 + k  # modulus, degree t, n, k
+            assert lines[0] == cross_shard_masks.field.modulus
+            assert lines[1] == t
+            assert lines[2] == node_id

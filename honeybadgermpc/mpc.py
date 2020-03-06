@@ -24,7 +24,18 @@ from .utils.misc import print_exception_callback
 
 class Mpc(object):
     def __init__(
-        self, sid, n, t, myid, send, recv, prog, config, preproc=None, **prog_args
+        self,
+        sid,
+        n,
+        t,
+        myid,
+        send,
+        recv,
+        prog,
+        config,
+        preproc=None,
+        shard_id=None,
+        **prog_args,
     ):
         # Parameters for robust MPC
         # Note: tolerates min(t,N-t) crash faults
@@ -308,20 +319,21 @@ class TaskProgramRunner(ProgramRunner):
         def g(i):
             return f"{shard_id}:{i}"
 
-        get_myid = f if shard_id is None else g
+        # get_myid = f if shard_id is None else g
 
-        for i in range(self.N):
+        for myid in range(self.N):
             # myid = f"{shard_id}:{i}" if shard_id is not None else i
-            myid = get_myid(i)
+            # myid = get_myid(i)
             context = Mpc(
                 "mpc:%d" % (self.counter,),
                 self.N,
                 self.t,
                 myid,
-                self.router.sends[i],
-                self.router.recvs[i],
+                self.router.sends[myid],
+                self.router.recvs[myid],
                 program,
                 self.config,
+                shard_id=shard_id,
                 **kwargs,
             )
             self.tasks.append(self.loop.create_task(context._run()))

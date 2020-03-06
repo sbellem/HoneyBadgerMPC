@@ -91,6 +91,10 @@ class PreProcessingMixin(ABC):
     def data_dir_path(self):
         return Path(self.data_dir)
 
+    def key(self, myid, n, t, shard_id=None):
+        _id = myid if shard_id is None else f"{myid}-{shard_id}"
+        return _id, n, t
+
     def min_count(self, n, t):
         """ Returns the minimum number of preprocessing stored in the cache across all
         of the keys with the given n, t values.
@@ -105,7 +109,7 @@ class PreProcessingMixin(ABC):
 
         return min(counts) // self._preprocessing_stride
 
-    def get_value(self, context, *args, **kwargs):
+    def get_value(self, context, *args, shard_id=None, **kwargs):
         """ Given an MPC context, retrieve one preprocessing value.
 
         args:
@@ -114,7 +118,8 @@ class PreProcessingMixin(ABC):
         outputs:
             Preprocessing value for this mixin
         """
-        key = (context.myid, context.N, context.t)
+        context_id = context.myid if shard_id is None else f"{context.myid}-{shard_id}"
+        key = (context_id, context.N, context.t)
 
         to_return, used = self._get_value(context, key, *args, **kwargs)
         logger.debug(f'got value "{to_return}" and used "{used}"')
@@ -231,7 +236,6 @@ class PreProcessingMixin(ABC):
             (n, t, context_id) = groups
             key = (context_id, n, t)
             values = self._read_preprocessing_file(file_name)
-
             self.cache[key] = chain(values)
             self.count[key] = len(values)
 
@@ -265,19 +269,12 @@ class PreProcessingMixin(ABC):
 
         for i in range(n):
             values = [v[i] for v in all_values]
-            context_id = i if shard_id is None else f"{i}-{shard_id}"
             file_name = self.build_filename(
-                n,
-                t,
-                context_id,
-                prefix=prefix,
-                shard_id=shard_id,
-                recv_shard_id=recv_shard_id,
+                n, t, i, prefix=prefix, shard_id=shard_id, recv_shard_id=recv_shard_id,
             )
-            self._write_preprocessing_file(
-                file_name, t, context_id, values, append=append
-            )
+            self._write_preprocessing_file(file_name, t, i, values, append=append)
 
+            context_id = i if shard_id is None else f"{i}-{shard_id}"
             key = (context_id, n, t)
             if append:
                 self.cache[key] = chain(self.cache[key], values)
@@ -517,19 +514,16 @@ class CrossShardMasksPreProcessing(PreProcessingMixin):
             Polynomial degree, and maximum fault tolerance for the
             number of nodes that may deviate from the protocol.
         context_id : str
-            {myid}-{shard_id} of the mpc context we're preprocessing for.
+            The id of the mpc context/server the file belongs to.
         shard_id : str or int
-            The id of the shard that would mask an input and
-            send it to the other shard.
-
-            MUST match the shard id in context id.
+            The id of the shard the server belongs to.
         recv_shard_idc: str or int
-            The id of the shard that would receive a mask input
-            fromcthe other shard.
+            The id of the receiving shard.
 
         output:
             Filename to use
         """
+        context_id = f"{context_id}-{shard_id}"
         dir_path = self.data_dir_path.joinpath(context_id, self.preprocessing_name)
         dir_path.mkdir(parents=True, exist_ok=True)
         file_path = dir_path.joinpath(f"{n}_{t}-{shard_id}_{recv_shard_id}")
@@ -573,6 +567,33 @@ class CrossShardMasksPreProcessing(PreProcessingMixin):
         t = t if t is not None else context.t
         assert self.count[key] >= 1, f"key is: {key}\ncount is: {self.count}\n"
         return context.Share(next(self.cache[key]), t), 1
+
+    def _refresh_cache(self):
+        """ Refreshes the cache by reading in sharedata files, and
+        updating the cache values and count variables.
+        """
+        logger.debug(f"(- {self.preprocessing_name} -) refreshing cache")
+        logger.debug(
+            f"(- {self.preprocessing_name} -) before cache refresh, count is: {dict(self.count)}"
+        )
+        self.cache = defaultdict(chain)
+        self.count = defaultdict(int)
+
+        for server_dir in self.data_dir_path.iterdir():
+            context_id = server_dir.stem
+            for pp_elements_dir in server_dir.iterdir():
+                for share_file in pp_elements_dir.iterdir():
+                    # expected filename format is: "n_t-sh1_sh2.share"
+                    n, t = (int(v) for v in share_file.stem.split("-")[0].split("_"))
+                    key = (context_id, n, t)
+                    values = self._read_preprocessing_file(share_file)
+
+            self.cache[key] = chain(values)
+            self.count[key] = len(values)
+
+        logger.debug(
+            f"(- {self.preprocessing_name} -) after cache refresh, count is: {dict(self.count)}"
+        )
 
 
 class SimplePreProcessing(PreProcessingMixin):
@@ -845,5 +866,5 @@ class PreProcessedElements:
     def get_share_bits(self, context):
         return self._share_bits.get_value(context)
 
-    def get_cross_shard_masks(self, context):
-        return self._cross_shard_masks.get_value(context)
+    def get_cross_shard_masks(self, context, shard_id):
+        return self._cross_shard_masks.get_value(context, shard_id=shard_id)
