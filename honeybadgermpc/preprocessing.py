@@ -166,7 +166,7 @@ class PreProcessingMixin(ABC):
         if refresh_cache:
             self._refresh_cache()
 
-    def build_filename(self, n, t, context_id, prefix=None):
+    def build_filename(self, n, t, context_id, prefix=None, suffix=""):
         """ Given a file prefix, and metadata, return the filename to put
         the shares in.
 
@@ -176,6 +176,15 @@ class PreProcessingMixin(ABC):
             context_id: myid of the mpc context we're preprocessing for.
             prefix: filename prefix, e.g. "sharedata/triples".
                 Defaults to self.file_prefix
+            suffix: Optional string to append at the end of the filename.
+                Defaults to empty string "". Please note no delimiter or separation
+                character will pre-pended to the suffix. It is the responsibility of
+                the caller to include a delimiter if needed. Example:
+
+                .. code-block:: python
+
+                    >>> prefix, n, t, context_id, suffix = "p", 5, 1, "4", "_a1'
+                    'p_5_1-4_a1'
 
         output:
             Filename to use
@@ -183,7 +192,7 @@ class PreProcessingMixin(ABC):
         if prefix is None:
             prefix = self.file_prefix
 
-        return f"{prefix}_{n}_{t}-{context_id}.share"
+        return f"{prefix}_{n}_{t}-{context_id}{suffix}.share"
 
     def _parse_file_name(self, file_name):
         """ Given a potential filename, return (n, t, context_id) of the
@@ -233,7 +242,9 @@ class PreProcessingMixin(ABC):
             f"(- {self.preprocessing_name} -) after cache refresh, count is: {dict(self.count)}"
         )
 
-    def _write_polys(self, n, t, polys, append=False, prefix=None, shard_id=None):
+    def _write_polys(
+        self, n, t, polys, append=False, prefix=None, shard_id=None, suffix=""
+    ):
         """ Given a file prefix, a list of polynomials, and associated n, t values,
         write the preprocessing for the share values represented by the polnomials.
 
@@ -252,7 +263,9 @@ class PreProcessingMixin(ABC):
         for i in range(n):
             values = [v[i] for v in all_values]
             context_id = i if shard_id is None else f"{shard_id}:{i}"
-            file_name = self.build_filename(n, t, context_id, prefix=prefix)
+            file_name = self.build_filename(
+                n, t, context_id, prefix=prefix, suffix=suffix
+            )
             self._write_preprocessing_file(
                 file_name, t, context_id, values, append=append
             )
@@ -450,8 +463,11 @@ class CrossShardMasksPreProcessing(PreProcessingMixin):
         polys = self._generate_polys(
             k, n, t, shard_1_id=shard_1_id, shard_2_id=shard_2_id
         )
+        suffix = f"_{shard_1_id}_{shard_2_id}"
         for shard_id, polys in polys.items():
-            self._write_polys(n, t, polys, append=False, shard_id=shard_id)
+            self._write_polys(
+                n, t, polys, append=False, shard_id=shard_id, suffix=suffix
+            )
 
     def _generate_polys(self, k, n, t, *, shard_1_id, shard_2_id):
         """Return a pair of polys for each k value
