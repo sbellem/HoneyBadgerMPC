@@ -580,6 +580,8 @@ class CrossShardMasksPreProcessing(PreProcessingMixin):
         self.count = defaultdict(int)
 
         for server_dir in self.data_dir_path.iterdir():
+            if server_dir.is_file():
+                continue
             context_id = server_dir.stem
             for pp_elements_dir in server_dir.iterdir():
                 for share_file in pp_elements_dir.iterdir():
