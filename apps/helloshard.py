@@ -15,7 +15,7 @@ from web3.exceptions import TransactionNotFound
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
 from honeybadgermpc.mpc import Mpc
-from honeybadgermpc.offline_randousha import randousha
+from honeybadgermpc.offline_randousha import generate_intershardmasks, randousha
 from honeybadgermpc.polynomial import EvalPoint, polynomials_over
 from honeybadgermpc.preprocessing import PreProcessedElements
 from honeybadgermpc.router import SimpleRouter
@@ -182,6 +182,8 @@ class Server(object):
     def _init_tasks(self):
         self._task1 = asyncio.ensure_future(self._offline_inputmasks_loop())
         self._task1.add_done_callback(print_exception_callback)
+        # self._task1b = asyncio.ensure_future(self._offline_crossshardmasks_loop())
+        # self._task1b.add_done_callback(print_exception_callback)
         self._task2 = asyncio.ensure_future(self._client_request_loop())
         self._task2.add_done_callback(print_exception_callback)
         self._task3 = asyncio.ensure_future(self._mpc_loop())
@@ -191,6 +193,7 @@ class Server(object):
 
     async def join(self):
         await self._task1
+        # await self._task1b
         await self._task2
         await self._task3
         await self._task4
@@ -224,7 +227,7 @@ class Server(object):
             # Step 1. I) Wait until needed
             while True:
                 inputmasks_available = contract_concise.inputmasks_available()
-                totalmasks = contract_concise.preprocess()
+                totalmasks = contract_concise.preprocess()[1]
                 # Policy: try to maintain a buffer of 10 * K input masks
                 target = 10 * K
                 if inputmasks_available < target:
@@ -253,6 +256,58 @@ class Server(object):
             self._inputmasks += rs_t
 
             # Step 1. III) Submit an updated report
+            await self._preprocess_report()
+
+            # Increment the preprocessing round and continue
+            preproc_round += 1
+
+    async def _offline_crossshardmasks_loop(self):
+        contract_concise = ConciseContract(self.contract)
+        n = contract_concise.n()
+        t = contract_concise.t()
+        K = contract_concise.K()  # noqa: N806
+        preproc_round = 0
+        PER_EPOCH_INTERSHARD_MASKS = (  # noqa: N806
+            contract_concise.PER_EPOCH_INTERSHARD_MASKS()  # noqa: N806
+        )  # noqa: N806
+
+        # Start up:
+        await self._preprocess_report()
+
+        while True:
+            # Step 1a. I) Wait for more triples/bits to be needed
+            while True:
+                intershardmasks_available = contract_concise.intershardmasks_available()
+
+                # Policy: try to maintain a buffer of K*2*n * 10 masks
+                target = 10 * K * 2 * n
+                if intershardmasks_available < target:
+                    break
+                # already have enough triples/bits, sleep
+                await asyncio.sleep(5)
+
+            # Step 1a. II) Run generate triples and generate_bits
+            logging.info(
+                f"[{self.myid}] intershard masks available: {intershardmasks_available} \
+                   target: {target}"
+            )
+            logging.info(
+                f"[{self.myid}] Initiating Intershard Masks {PER_EPOCH_INTERSHARD_MASKS}"
+            )
+            send, recv = self.get_send_recv(f"preproc:intershardmasks:{preproc_round}")
+            start_time = time.time()
+            intershardmasks = await generate_intershardmasks(
+                n, t, PER_EPOCH_INTERSHARD_MASKS, self.myid, send, recv, field
+            )
+            end_time = time.time()
+            logging.info(
+                f"[{self.myid}] FAKE intershardmasks finished in {end_time-start_time}"
+            )
+
+            # Append each triple
+            self._intershardmasks += intershardmasks
+
+            # Step 1a. III) Submit an updated report
             await self._preprocess_report()
 
             # Increment the preprocessing round and continue
@@ -287,7 +342,14 @@ class Server(object):
                 masked_message_bytes, inputmask_idx = contract_concise.input_queue(idx)
                 masked_message = field(int.from_bytes(masked_message_bytes, "big"))
                 # Get the input mask
-                inputmask = self._inputmasks[inputmask_idx]
+                logging.info(f"[{self.myid}] inputmask idx: {inputmask_idx}")
+                logging.info(f"[{self.myid}] inputmasks: {self._inputmasks}")
+                try:
+                    inputmask = self._inputmasks[inputmask_idx]
+                except KeyError as err:
+                    logging.info(err)
+                    logging.info(f"[{self.myid}] inputmask idx: {inputmask_idx}")
+                    logging.info(f"[{self.myid}] inputmasks: {self._inputmasks}")
 
                 m_share = masked_message - inputmask
                 inputs.append(m_share)

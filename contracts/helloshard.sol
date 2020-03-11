@@ -59,6 +59,7 @@ contract MpcCoordinator {
     // ###############################################
 
     struct PreProcessCount {
+        uint intershardmasks;
         uint inputmasks;     // [r]
     }
 
@@ -182,6 +183,15 @@ contract MpcCoordinator {
     // ######################
 
     uint public constant K = 2; // Mix Size 
+
+    // Preprocessing requirements
+    uint public constant PER_EPOCH_INTERSHARDMASKS = K * n * 2;
+
+    // Return the maximum number of mixes that can be run with the
+    // available preprocessing
+    function intershardmasks_available() public view returns(uint) {
+        return preprocess.intershardmasks - preprocess_used.intershardmasks;
+    }
 
     // Step 3.a. Trigger MPC to start
     uint public inputs_unmasked;
