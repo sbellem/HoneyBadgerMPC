@@ -1,13 +1,10 @@
 .PHONY: clean clean-test clean-pyc clean-build docs help
 .DEFAULT_GOAL := help
-define BROWSER_PYSCRIPT
-import os, webbrowser, sys
-try:
-	from urllib import pathname2url
-except:
-	from urllib.request import pathname2url
 
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+define BROWSER_PYSCRIPT
+import sys, webbrowser
+
+webbrowser.open("http://localhost:58888/" + sys.argv[1])
 endef
 export BROWSER_PYSCRIPT
 
@@ -20,7 +17,9 @@ for line in sys.stdin:
 		target, help = match.groups()
 		print("%-20s %s" % (target, help))
 endef
+
 export PRINT_HELP_PYSCRIPT
+
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
 help:
@@ -61,13 +60,16 @@ coverage: ## check code coverage quickly with the default Python
 	pytest -v -n auto --cov=honeybadgermpc --cov-report term --cov-report html
 	$(BROWSER) htmlcov/index.html
 
-docs: ## generate Sphinx HTML documentation, including API docs
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
+docs: ## generate Sphinx HTML documentation
+	docker-compose run --rm honeybadgermpc $(MAKE) -C docs clean
+	docker-compose run --rm honeybadgermpc $(MAKE) -C docs html O="-v -W --keep-going"
+	docker-compose -f docs.yml stop viewdocs
+	docker-compose -f docs.yml up -d viewdocs
 
 servedocs: docs ## compile the docs watching for changes
-	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+	docker-compose -f docs.yml stop viewdocs
+	docker-compose -f docs.yml up -d viewdocs
+	$(BROWSER) index.html
 
 release: clean ## package and upload a release
 	twine upload dist/*
