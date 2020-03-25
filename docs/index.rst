@@ -26,15 +26,29 @@
 
 .. toctree::
     :maxdepth: 1
+    :caption: Apps
+
+    apps/auctions
+
+.. toctree::
+    :maxdepth: 1
     :caption: Integrations
 
     integrations/hyperledger-fabric
 
 .. toctree::
     :maxdepth: 2
-    :caption: Internals
 
-    internals
+    :caption: Library Reference
+
+    libref/honeybadgermpc
+..    libref/commonsubset
+..    libref/triple_refinement
+..    libref/rand
+..    libref/secretshare
+..    libref/field
+..    libref/polynomial
+..    libref/router
 
 .. development/index
 .. toctree::
