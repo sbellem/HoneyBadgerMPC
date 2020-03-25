@@ -6,9 +6,6 @@
 .. HoneyBadgerMPC
 .. ==============
 
-.. .. mdinclude:: ../README.md
-
-
 .. toctree::
     :maxdepth: 1
     :caption: The Honeybadger of MPC Protocols
@@ -30,6 +27,12 @@
 
 .. toctree::
     :maxdepth: 1
+    :caption: Apps
+
+    apps/auctions
+
+.. toctree::
+    :maxdepth: 1
     :caption: Integrations
 
     integrations/hyperledger-fabric
@@ -39,7 +42,6 @@
     :caption: Library Reference
 
     libref/honeybadgermpc
-..    libref/passive
 ..    libref/commonsubset
 ..    libref/triple_refinement
 ..    libref/rand
