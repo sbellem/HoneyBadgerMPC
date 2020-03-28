@@ -1,5 +1,3 @@
-"""Volume Matching Auction : buy and sell orders are matched only on volume while price is determined by reference to some external market."""
-
 import asyncio
 import logging
 import subprocess
@@ -97,12 +95,6 @@ def main(
     eth_rpc_hostname="localhost",
     eth_rpc_port=8545,
 ):
-    import time
-
-    # cmd = "ganache-cli -p 8545 --accounts 50 --blockTime 1 > acctKeys.json 2>&1"
-    # logging.info(f"Running {cmd}")
-    # with run_and_terminate_process(cmd, shell=True):
-    time.sleep(5)
     run_eth(
         contract_name=contract_name,
         contract_filepath=contract_filepath,
@@ -118,12 +110,14 @@ if __name__ == "__main__":
     contract_name = "MpcCoordinator"
     contract_filename = "contract.sol"
     contract_filepath = Path(__file__).resolve().parent.joinpath(contract_filename)
+    eth_rpc_hostname = "blockchain"
+    eth_rpc_port = 8545
     n, t = 4, 1
     main(
         contract_name=contract_name,
         contract_filepath=contract_filepath,
         n=4,
         t=1,
-        eth_rpc_hostname="ganache",
-        eth_rpc_port=8545,
+        eth_rpc_hostname=eth_rpc_hostname,
+        eth_rpc_port=eth_rpc_port,
     )
