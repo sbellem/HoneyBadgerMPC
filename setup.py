@@ -13,7 +13,7 @@ DESCRIPTION = "honeybadgermpc"
 REQUIRES_PYTHON = ">=3.7.0"
 VERSION = None
 
-REQUIRED = ["gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
+REQUIRED = ["aiohttp", "gmpy2", "zfec", "pycrypto", "cffi", "psutil", "pyzmq"]
 
 TESTS_REQUIRES = [
     "black",
@@ -46,7 +46,7 @@ DOCS_REQUIRE = [
     "recommonmark",
 ]
 
-ETH_REQUIRES = ["web3", "ethereum"]
+ETH_REQUIRES = ["bitcoin", "web3", "ethereum"]
 
 AWS_REQUIRES = ["boto3", "paramiko"]
 
