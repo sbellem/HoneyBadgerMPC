@@ -71,8 +71,8 @@ servedocs-local: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 =======
 docs: ## generate Sphinx HTML documentation
-	docker-compose run --rm honeybadgermpc $(MAKE) -C docs clean
-	docker-compose run --rm honeybadgermpc $(MAKE) -C docs html O="-v -W --keep-going"
+	docker-compose run --rm honeybadgermpc make -C docs clean
+	docker-compose run --rm honeybadgermpc make -C docs html O="-v -W --keep-going"
 	docker-compose -f docs.yml stop viewdocs
 	docker-compose -f docs.yml up -d viewdocs
 
