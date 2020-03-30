@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import subprocess
-from contextlib import contextmanager
 from pathlib import Path
 
 from web3 import HTTPProvider, Web3
@@ -16,7 +14,6 @@ from honeybadgermpc.preprocessing import PreProcessedElements
 from honeybadgermpc.router import SimpleRouter
 
 
-# XXX async def main_loop(w3, *, contract_address, abi):
 async def main_loop(w3, *, n, contract_context):
     pp_elements = PreProcessedElements()
     # deletes sharedata/ if present
@@ -34,7 +31,6 @@ async def main_loop(w3, *, n, contract_context):
     # Step 2: Create the servers
     router = SimpleRouter(n)
     sends, recvs = router.sends, router.recvs
-    # servers = [Server("sid", i, sends[i], recvs[i], w3, contract) for i in range(n)]
     servers = [
         Server("sid", i, sends[i], recvs[i], w3, contract_context=contract_context)
         for i in range(n)
@@ -46,7 +42,7 @@ async def main_loop(w3, *, n, contract_context):
         # client requests input mask {idx} from server {i}
         return servers[i]._inputmasks[idx]
 
-    client = Client("sid", "client", None, None, w3, contract, req_mask)
+    client = Client("sid", "client", w3, req_mask, contract_context=contract_context)
 
     # Step 4. Wait for conclusion
     for i, server in enumerate(servers):
@@ -54,24 +50,11 @@ async def main_loop(w3, *, n, contract_context):
     await client.join()
 
 
-@contextmanager
-def run_and_terminate_process(*args, **kwargs):
-    try:
-        p = subprocess.Popen(*args, **kwargs)
-        yield p
-    finally:
-        logging.info(f"Killing ganache-cli {p.pid}")
-        p.terminate()  # send sigterm, or ...
-        p.kill()  # send sigkill
-        p.wait()
-        logging.info("done")
-
-
 def run_eth(
     *, contract_context, n=4, t=1, eth_rpc_hostname, eth_rpc_port,
 ):
     w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
-    w3 = Web3(HTTPProvider(w3_endpoint_uri))  # Connect to localhost:8545
+    w3 = Web3(HTTPProvider(w3_endpoint_uri))
     asyncio.set_event_loop(asyncio.new_event_loop())
     loop = asyncio.get_event_loop()
 

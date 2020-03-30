@@ -3,7 +3,7 @@ import logging
 
 from web3.contract import ConciseContract
 
-from apps.utils import wait_for_receipt
+from apps.utils import fetch_contract, wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
@@ -16,7 +16,7 @@ field = GF(Subgroup.BLS12_381)
 class Client:
     """An MPC client that sends "masked" messages to an Ethereum contract."""
 
-    def __init__(self, sid, myid, send, recv, w3, contract, req_mask):
+    def __init__(self, sid, myid, w3, req_mask, *, contract_context):
         """
         Parameters
         ----------
@@ -24,20 +24,19 @@ class Client:
             Session id.
         myid: int
             Client id.
-        send:
-            Function used to send messages. Not used?
-        recv:
-            Function used to receive messages. Not used?
         w3:
             Connection instance to an Ethereum node.
-        contract:
-            Contract instance on the Ethereum blockchain.
         req_mask:
             Function used to request an input mask from a server.
+        contract_context: dict
+            Contract attributes needed to interact with the contract
+            using web3. Should contain the address, name and source code
+            file path.
         """
         self.sid = sid
         self.myid = myid
-        self.contract = contract
+        self._contract_context = contract_context
+        self.contract = fetch_contract(w3, **contract_context)
         self.w3 = w3
         self.req_mask = req_mask
         self._task = asyncio.ensure_future(self._run())
