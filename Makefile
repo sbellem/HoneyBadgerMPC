@@ -61,8 +61,8 @@ coverage: ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation
-	docker-compose run --rm honeybadgermpc $(MAKE) -C docs clean
-	docker-compose run --rm honeybadgermpc $(MAKE) -C docs html O="-v -W --keep-going"
+	docker-compose run --rm honeybadgermpc make -C docs clean
+	docker-compose run --rm honeybadgermpc make -C docs html O="-v -W --keep-going"
 	docker-compose -f docs.yml stop viewdocs
 	docker-compose -f docs.yml up -d viewdocs
 
