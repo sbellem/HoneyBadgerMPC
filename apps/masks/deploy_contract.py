@@ -2,14 +2,10 @@ from pathlib import Path
 
 from web3 import HTTPProvider, Web3
 
+from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
 from apps.utils import create_and_deploy_contract
 
 PARENT_DIR = Path(__file__).resolve().parent
-PUBLIC_DATA_DIR = "public-data"
-CONTRACT_ADDRESS_FILENAME = "contract_address"
-CONTRACT_ADDRESS_FILEPATH = PARENT_DIR.joinpath(
-    PUBLIC_DATA_DIR, CONTRACT_ADDRESS_FILENAME
-)
 
 
 def deploy(

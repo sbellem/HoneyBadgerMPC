@@ -29,6 +29,24 @@ def compile_contract_source(filepath):
     return compile_source(source)
 
 
+def get_contract_interface(*, contract_name, contract_filepath):
+    compiled_sol = compile_contract_source(contract_filepath)
+    try:
+        contract_interface = compiled_sol[f"<stdin>:{contract_name}"]
+    except KeyError:
+        logging.error(f"Contract {contract_name} not found")
+        raise
+
+    return contract_interface
+
+
+def get_contract_abi(*, contract_name, contract_filepath):
+    ci = get_contract_interface(
+        contract_name=contract_name, contract_filepath=contract_filepath
+    )
+    return ci["abi"]
+
+
 def deploy_contract(w3, *, abi, bytecode, deployer, args=(), kwargs=None):
     """Deploy the contract.
 
@@ -122,3 +140,10 @@ def create_and_deploy_contract(
         kwargs=kwargs,
     )
     return contract_address, abi
+
+
+def get_contract_address(filepath):
+    with open(filepath, "r") as f:
+        line = f.readline()
+    contract_address = line.strip()
+    return contract_address

@@ -4,7 +4,7 @@ import time
 
 from web3.contract import ConciseContract
 
-from apps.utils import wait_for_receipt
+from apps.utils import get_contract_abi, wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
@@ -22,7 +22,7 @@ field = GF(Subgroup.BLS12_381)
 class Server:
     """MPC server class to ..."""
 
-    def __init__(self, sid, myid, send, recv, w3, contract):
+    def __init__(self, sid, myid, send, recv, w3, *, contract_context):
         """
         Parameters
         ----------
@@ -36,12 +36,15 @@ class Server:
             Function used to receive messages.
         w3:
             Connection instance to an Ethereum node.
-        contract:
-            Contract instance on the Ethereum blockchain.
+        contract_context: dict
+            Contract attributes needed to interact with the contract
+            using web3. Should contain the address, name and source code
+            file path.
         """
         self.sid = sid
         self.myid = myid
-        self.contract = contract
+        self._contract_context = contract_context
+        self.contract = self._fetch_contract(w3, **contract_context)
         self.w3 = w3
         self._init_tasks()
         self._subscribe_task, subscribe = subscribe_recv(recv)
@@ -51,6 +54,15 @@ class Server:
 
         self.get_send_recv = _get_send_recv
         self._inputmasks = []
+
+    def _fetch_contract(self, w3, *, address, name, filepath):
+        abi = get_contract_abi(contract_name=name, contract_filepath=filepath)
+        contract = w3.eth.contract(address=address, abi=abi)
+        contract_concise = ConciseContract(contract)
+        # Call read only methods to check
+        contract_concise.n()
+        # TODO check n?
+        return contract
 
     def _init_tasks(self):
         self._task1 = asyncio.ensure_future(self._offline_inputmasks_loop())

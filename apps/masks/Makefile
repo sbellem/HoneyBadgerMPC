@@ -32,6 +32,7 @@ down: ## stop and remove containers, networks, images, and volumes
 
 run: down ## run the example
 	docker-compose up -d blockchain 
+	docker-compose up contract-deployer
 	docker-compose up mpc-simulation
 	docker-compose down blockchain 
 
