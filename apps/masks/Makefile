@@ -22,21 +22,27 @@ help:
 clean: clean-pyc
 
 clean-pyc: ## remove Python file artifacts
-	docker-compose run --no-deps --rm mpc-simulation find . -name '*.pyc' -exec rm -f {} +
-	docker-compose run --no-deps --rm mpc-simulation find . -name '*.pyo' -exec rm -f {} +
-	docker-compose run --no-deps --rm mpc-simulation find . -name '*~' -exec rm -f {} +
-	docker-compose run --no-deps --rm mpc-simulation find . -name '__pycache__' -exec rm -fr {} +
+	docker-compose run --no-deps --rm mpcnet find . -name '*.pyc' -exec rm -f {} +
+	docker-compose run --no-deps --rm mpcnet find . -name '*.pyo' -exec rm -f {} +
+	docker-compose run --no-deps --rm mpcnet find . -name '*~' -exec rm -f {} +
+	docker-compose run --no-deps --rm mpcnet find . -name '__pycache__' -exec rm -fr {} +
 
 down: ## stop and remove containers, networks, images, and volumes
 	docker-compose down
 
 run: down ## run the example
-	docker-compose up -d blockchain 
-	docker-compose up contract-deployer
-	docker-compose up mpc-simulation
-	docker-compose down blockchain 
-
-deploy-contract: down
 	docker-compose up -d blockchain
-	docker-compose up contract-deployer
+	docker-compose up setup
+	docker-compose up -d client
+	sh follow-logs-with-tmux.sh
+
+run-without-tmux: down ## run the example
+	docker-compose up -d blockchain
+	docker-compose up setup
+	docker-compose up -d client
+	docker-compose logs --follow blockchain mpcnet client
+
+setup: down
+	docker-compose up -d blockchain
+	docker-compose up setup
 	docker-compose down blockchain
