@@ -1,4 +1,16 @@
+"""MPC server code.
+
+**Questions**
+How are crash faults supposed to be handled? Currently, if a server comes
+back it will be in an inconsistent state. For instance, its input masks list
+will be empty, likely differing from the contract.
+
+Also, the epoch count will be reset to 0 if a server restarts. Not clear
+what this may cause, besides the server attempting to unmask messages that
+have already been unmasked ...
+"""
 import asyncio
+import json
 import logging
 import time
 from pathlib import Path
@@ -71,7 +83,37 @@ class Server:
             return wrap_send(tag, send), subscribe(tag)
 
         self.get_send_recv = _get_send_recv
-        self._inputmasks = []
+
+        # NOTE The input masks are not persisted, meaning that if the server
+        # stops and restarts it will be in an inconsistent state with the state
+        # persisted in the blockchain coordinator contract. When the server
+        # produces input masks it sends the new number of input masks in
+        # self._inputmasks to the contract which will persist that new number
+        # and use it to compute the number of masks of available. Now, the
+        # server produces masks based on the result of querying the contract
+        # via the function `inputmasks_available()`. So if the server restarted
+        # its self._inputmasks list will be empty meanwhile the contract may
+        # have recorded that 100 inputmasks were available. If the result of
+        # calling inputmasks_available() yields a number higher than a predefined
+        # target then the server will wait until the number of available masks is
+        # lower than this target before producing new masks.
+        #
+        # Another problem is that the server upon processing a masked message
+        # from a client may not have the corresponding share of the mask that
+        # was used by the client.
+        #
+        # The input masks (shares) must be persisted.
+        #
+        # TODO Persist the input masks to LevelDB or some other lightweight
+        # persistence mechanism.
+        # import plyvel
+        # self._db = plyvel.DB(f"db{self.myid}", create_if_missing=True)
+        self._dbfile = f"db{self.myid}.json"
+        try:
+            with open(self._dbfile) as f:
+                self._inputmasks = json.load(f)
+        except FileNotFoundError:
+            self._inputmasks = []
 
     def _init_tasks(self):
         self._task1 = asyncio.ensure_future(self._offline_inputmasks_loop())
@@ -186,6 +228,9 @@ class Server:
             while True:
                 inputmasks_available = contract_concise.inputmasks_available()
                 totalmasks = contract_concise.preprocess()
+
+                logging.info(f"available input masks: {inputmasks_available}")
+                logging.info(f"total input masks: {totalmasks}")
                 # Policy: try to maintain a buffer of 10 input masks
                 target = 10
                 if inputmasks_available < target:
@@ -212,6 +257,10 @@ class Server:
             logging.debug(f"len(rs_t): {len(rs_t)}")
             logging.debug(f"rs_t: {rs_t}")
             self._inputmasks += rs_t
+
+            # TODO persist the inputmasks to disk, for recovery
+            with open(self._dbfile, "w") as f:
+                json.dump(self._inputmasks, f)
 
             # Step 1. III) Submit an updated report
             await self._preprocess_report()
@@ -272,8 +321,15 @@ class Server:
             # 3.b. Collect the input
             # Get the public input (masked message)
             masked_message_bytes, inputmask_idx = contract_concise.input_queue(epoch)
+            logging.info(f"masked_message_bytes: {masked_message_bytes}")
+            logging.info(f"inputmask_idx: {inputmask_idx}")
             masked_message = field(int.from_bytes(masked_message_bytes, "big"))
-            inputmask = self._inputmasks[inputmask_idx]  # Get the input mask
+            logging.info(f"masked_message: {masked_message}")
+            try:
+                inputmask = self._inputmasks[inputmask_idx]  # Get the input mask
+            except IndexError:
+                logging.error(f"No input mask at index {inputmask_idx}")
+                raise
             msg_field_elem = masked_message - inputmask
 
             # 3.d. Call the MPC program
@@ -281,7 +337,9 @@ class Server:
                 logging.info(f"[{ctx.myid}] Running MPC network")
                 msg_share = ctx.Share(msg_field_elem)
                 opened_value = await msg_share.open()
-                msg = opened_value.value.to_bytes(32, "big").decode().strip("\x00")
+                opened_value_bytes = opened_value.value.to_bytes(32, "big")
+                logging.info(f"opened_value in bytes: {opened_value_bytes}")
+                msg = opened_value_bytes.decode().strip("\x00")
                 return msg
 
             send, recv = self.get_send_recv(f"mpc:{epoch}")

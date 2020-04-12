@@ -3,7 +3,10 @@ import logging
 from collections import namedtuple
 from pathlib import Path
 
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
+from aiohttp.http import HttpProcessingError
+
+from tenacity import retry, retry_if_exception_type
 
 import toml
 
@@ -116,7 +119,7 @@ class Client:
         for epoch in range(3):
             logging.info(f"[Client] Starting Epoch {epoch}")
             receipts = []
-            m = f"Hello! (Epoch: {epoch})"
+            m = f"Hello! (Client Epoch: {epoch})"
             task = asyncio.ensure_future(self.send_message(m))
             task.add_done_callback(print_exception_callback)
             receipts.append(task)
@@ -127,6 +130,12 @@ class Client:
                     break
                 await asyncio.sleep(5)
 
+    # TODO Add a timeout condition to limit the number of retries.
+    @retry(
+        retry=retry_if_exception_type(
+            exception_types=(ClientError, HttpProcessingError)
+        )
+    )
     async def _request_mask_share(self, server, mask_idx):
         logging.info(
             f"query server {server.host}:{server.port} "
