@@ -36,10 +36,10 @@ async def prog(ctx, k=50):
     logging.info(f"[{ctx.myid}] Running prog 1.")
     res = await dot_product(ctx, xs, ys)
 
-    R = await res.open()
-    XS = await ctx.ShareArray(xs).open()
-    YS = await ctx.ShareArray(ys).open()
-    assert R == sum([X * Y for X, Y in zip(XS, YS)])
+    R = await res.open()  # noqa N806
+    XS = await ctx.ShareArray(xs).open()  # noqa N806
+    YS = await ctx.ShareArray(ys).open()  # noqa N806
+    assert R == sum([X * Y for X, Y in zip(XS, YS)])  # noqa N806
     logging.info(f"[{ctx.myid}] done")
 
 

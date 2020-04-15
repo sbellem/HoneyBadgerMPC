@@ -16,7 +16,21 @@ from honeybadgermpc.utils.misc import (
 )
 
 
-class NodeCommunicator(object):
+class NodeCommunicator:
+    """Uses ROUTER/DEALER pattern.
+
+    Notes
+    -----
+    Some resources on the ROUTER/DEALER pattern:
+
+    * http://zguide.zeromq.org/page:all#toc40
+    * http://wiki.zeromq.org/tutorials:dealer-and-router
+    * http://zguide.zeromq.org/py:rtdealer
+    * http://zguide.zeromq.org/py:rrbroker
+    * https://stackoverflow.com/a/23592408/2769475
+
+    """
+
     LAST_MSG = None
 
     def __init__(self, peers_config, my_id, linger_timeout):
