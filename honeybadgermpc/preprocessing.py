@@ -771,6 +771,15 @@ class PreProcessedElements:
 
         self._init_data_dir()
 
+    def gentle_clear_preprocessing(self):
+        """ Delete all things from the preprocessing folder
+        """
+        logger.debug(
+            f"Deleting all files from preprocessing folder: {self.data_directory}"
+        )
+        for f in Path(self.data_directory):
+            f.unlink()
+
     async def wait_for_preprocessing(self, timeout=1):
         """ Block until the ready file is created
         """
