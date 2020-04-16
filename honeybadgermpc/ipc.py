@@ -1,3 +1,15 @@
+"""Interprocess communication mechanisms to support the exchange of
+messages between MPC servers.
+
+Things to look into for the near future:
+
+* ZAP: Authentication and encryption using the CURVE mechanism (see example at:
+  https://github.com/zeromq/pyzmq/blob/master/examples/security/asyncio-ironhouse.py,
+  docs at https://pyzmq.readthedocs.io/en/latest/api/zmq.auth.html, and
+  related RFCs at:
+    https://rfc.zeromq.org/spec/27/
+    https://rfc.zeromq.org/spec/26/
+"""
 import asyncio
 import logging
 from pickle import dumps, loads

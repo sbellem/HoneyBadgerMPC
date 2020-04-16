@@ -75,9 +75,10 @@ class Server:
         self.contract = fetch_contract(w3, **contract_context)
         self.w3 = w3
         self._init_tasks()
-        self._subscribe_task, subscribe = subscribe_recv(recv)
         self._http_host = http_host
         self._http_port = http_port
+
+        self._subscribe_task, subscribe = subscribe_recv(recv)
 
         def _get_send_recv(tag):
             return wrap_send(tag, send), subscribe(tag)
