@@ -24,6 +24,7 @@ def wrap_send(tag: str, send: Callable):  # noqa: F821
     """
 
     def _send(dest, message):
+        logging.info(f"sending to: {dest}, tag: {tag}, message {message}")
         send(dest, (tag, message))
 
     return _send
@@ -91,11 +92,13 @@ def subscribe_recv(recv):
             # Whenever we receive a share array, directly put it in the
             # appropriate queue for that round
             j, (tag, o) = await recv()
+            logging.info(f"received tag: {tag}")
             tag_table[tag].put_nowait((j, o))
 
     def subscribe(tag):
         # TODO: make this raise an exception
         # Ensure that this tag has not been subscribed to already
+        logging.info(f"subscribing to tag: {tag}")
         assert tag not in taken
         taken.add(tag)
 
