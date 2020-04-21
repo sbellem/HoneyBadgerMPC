@@ -6,20 +6,21 @@ import toml
 
 from apps.masks.server import Server
 
+from honeybadgermpc.config import NodeDetails
+from honeybadgermpc.ipc import NodeCommunicator
 from honeybadgermpc.preprocessing import PreProcessedElements
-from honeybadgermpc.router import SimpleRouter
 
 PARENT_DIR = Path(__file__).resolve().parent
 
 
 class MPCNet:
-    def __init__(self, servers):
+    def __init__(self, servers, ncs=None):
         self.servers = servers
         pp_elements = PreProcessedElements()
         pp_elements.clear_preprocessing()  # deletes sharedata/ if present
 
     @classmethod
-    def from_toml_config(cls, config_path):
+    async def from_toml_config(cls, config_path):
         config = toml.load(config_path)
 
         # TODO extract resolving of relative path into utils
@@ -30,28 +31,37 @@ class MPCNet:
 
         n = config["n"]
 
-        # communication channels
-        router = SimpleRouter(n)
-        sends, recvs = router.sends, router.recvs
-
         base_config = {k: v for k, v in config.items() if k != "servers"}
+
+        # For NodeCommunicator
+        node_details = {
+            i: NodeDetails(s["host"], s["dr_port"])
+            for i, s in enumerate(config["servers"])
+        }
+
         servers = []
+        ncs = []
         for i in range(n):
             server_config = {k: v for k, v in config["servers"][i].items()}
             server_config.update(base_config, session_id="sid")
-            server = Server.from_dict_config(
-                server_config, send=sends[i], recv=recvs[i]
-            )
+
+            # NodeCommunicator / zeromq sockets
+            nc = NodeCommunicator(node_details, i, 2)
+            await nc._setup()
+            ncs.append(nc)
+
+            server = Server.from_dict_config(server_config, send=nc.send, recv=nc.recv)
             servers.append(server)
-        return cls(servers)
+        return cls(servers, ncs=ncs)
 
     async def start(self):
-        for server in self.servers:
+        for i, server in enumerate(self.servers):
             await server.join()
+            await self.ncs[i]._exit()
 
 
 async def main(config_file):
-    mpcnet = MPCNet.from_toml_config(config_file)
+    mpcnet = await MPCNet.from_toml_config(config_file)
     await mpcnet.start()
 
 

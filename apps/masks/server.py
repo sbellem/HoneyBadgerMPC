@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import time
+from functools import partial
 from pathlib import Path
 
 from aiohttp import web
@@ -28,9 +29,9 @@ from honeybadgermpc.field import GF
 from honeybadgermpc.mpc import Mpc
 from honeybadgermpc.offline_randousha import randousha
 from honeybadgermpc.utils.misc import (
+    _get_send_recv,
     print_exception_callback,
     subscribe_recv,
-    wrap_send,
 )
 
 field = GF(Subgroup.BLS12_381)
@@ -80,10 +81,7 @@ class Server:
 
         self._subscribe_task, subscribe = subscribe_recv(recv)
 
-        def _get_send_recv(tag):
-            return wrap_send(tag, send), subscribe(tag)
-
-        self.get_send_recv = _get_send_recv
+        self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
 
         # NOTE The input masks are not persisted, meaning that if the server
         # stops and restarts it will be in an inconsistent state with the state

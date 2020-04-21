@@ -12,6 +12,7 @@ Things to look into for the near future:
 """
 import asyncio
 import logging
+from functools import partial
 from pickle import dumps, loads
 
 from psutil import cpu_count
@@ -22,9 +23,10 @@ from zmq.asyncio import Context
 from honeybadgermpc.config import ConfigVars, HbmpcConfig
 from honeybadgermpc.mpc import Mpc
 from honeybadgermpc.utils.misc import (
+    _get_send_recv,
     print_exception_callback,
     subscribe_recv,
-    wrap_send,
+    # wrap_send,
 )
 
 
@@ -46,6 +48,9 @@ class NodeCommunicator:
     LAST_MSG = None
 
     def __init__(self, peers_config, my_id, linger_timeout):
+        logging.info(
+            f"Creating NodeCommunicator for node {my_id} and peers {peers_config}"
+        )
         self.peers_config = peers_config
         self.my_id = my_id
 
@@ -69,6 +74,7 @@ class NodeCommunicator:
                 self._sender_queues[i] = asyncio.Queue()
 
     def send(self, node_id, msg):
+        logging.info(f"Queuing {msg} to send to node id {node_id}")
         msg = (self.my_id, msg) if node_id == self.my_id else msg
         self._sender_queues[node_id].put_nowait(msg)
 
@@ -79,17 +85,20 @@ class NodeCommunicator:
         await self._setup()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def _exit(self):
         # Add None to the sender queues and drain out all the messages.
         for i in range(len(self._sender_queues)):
             if i != self.my_id:
                 self._sender_queues[i].put_nowait(NodeCommunicator.LAST_MSG)
         await asyncio.gather(*self._dealer_tasks)
-        logging.debug("Dealer tasks finished.")
+        logging.info("Dealer tasks finished.")
         self._router_task.cancel()
-        logging.debug("Router task cancelled.")
+        logging.info("Router task cancelled.")
         self.zmq_context.destroy(linger=self.linger_timeout * 1000)
         self.benchmark_logger.info("Total bytes sent out: %d", self.bytes_sent)
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._exit()
 
     async def _setup(self):
         # Setup one router for a party, this acts as a
@@ -125,18 +134,18 @@ class NodeCommunicator:
         while True:
             sender_id, raw_msg = await router.recv_multipart()
             msg = loads(raw_msg)
-            # logging.debug("[RECV] FROM: %s, MSG: %s,", sender_id, msg)
+            logging.info("[RECV] FROM: %s, MSG: %s,", sender_id, msg)
             self._receiver_queue.put_nowait((int(sender_id), msg))
 
     async def _process_node_messages(self, node_id, node_msg_queue, send_to_node):
         while True:
             msg = await node_msg_queue.get()
             if msg is NodeCommunicator.LAST_MSG:
-                logging.debug("No more messages to Node: %d can be sent.", node_id)
+                logging.info("No more messages to Node: %d can be sent.", node_id)
                 break
             raw_msg = dumps(msg)
             self.bytes_sent += len(raw_msg)
-            # logging.debug("[SEND] TO: %d, MSG: %s", node_id, msg)
+            logging.info("[SEND] TO: %d, MSG: %s", node_id, msg)
             await send_to_node([raw_msg])
 
 
@@ -176,8 +185,8 @@ class ProcessProgramRunner(object):
         self.progs.append(task)
         return program_result
 
-    def get_send_recv(self, tag):
-        return wrap_send(tag, self.send), self.subscribe(tag)
+    # def get_send_recv(self, tag):
+    #    return wrap_send(tag, self.send), self.subscribe(tag)
 
     async def __aenter__(self):
         await self.node_communicator.__aenter__()
@@ -185,15 +194,18 @@ class ProcessProgramRunner(object):
             self.node_communicator.recv
         )
         self.send = self.node_communicator.send
+        self.get_send_recv = partial(
+            _get_send_recv, send=self.send, subscribe=self.subscribe
+        )
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
         await asyncio.gather(*self.progs)
-        logging.debug("All programs finished.")
+        logging.info("All programs finished.")
         await self.node_communicator.__aexit__(exc_type, exc, tb)
-        logging.debug("NodeCommunicator closed.")
+        logging.info("NodeCommunicator closed.")
         self.subscribe_task.cancel()
-        logging.debug("Subscribe task cancelled.")
+        logging.info("Subscribe task cancelled.")
 
 
 async def verify_all_connections(peers, n, my_id):
@@ -201,7 +213,7 @@ async def verify_all_connections(peers, n, my_id):
     # No need to uncomment this when running across servers
     # since the network latency is already present there.
 
-    # logging.debug("Sleeping for: %d", my_id)
+    # logging.info("Sleeping for: %d", my_id)
     # await asyncio.sleep(my_id)
 
     async with NodeCommunicator(peers, my_id) as node_communicator:
