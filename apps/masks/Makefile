@@ -36,19 +36,19 @@ stop:
 rm:
 	docker-compose rm --stop --force blockchain setup mpcnet client
 
-run: rm ## run the example
+run: rm clean ## run the example
 	docker-compose up -d blockchain
 	docker-compose up setup
 	docker-compose up -d client
 	sh follow-logs-with-tmux.sh
 
-run-without-tmux: rm ## run the example
+run-without-tmux: rm clean ## run the example
 	docker-compose up -d blockchain
 	docker-compose up setup
 	docker-compose up -d client
 	docker-compose logs --follow blockchain mpcnet client
 
-setup: rm
+setup: rm clean
 	docker-compose up -d blockchain
 	docker-compose up setup
 	docker-compose rm --stop --force blockchain
