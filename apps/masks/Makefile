@@ -36,7 +36,7 @@ stop:
 rm:
 	docker-compose rm --stop --force blockchain setup mpcnet client
 
-run: rm clean ## run the example
+run: down rm clean ## run the example
 	docker-compose up -d blockchain
 	docker-compose up setup
 	docker-compose up -d client
