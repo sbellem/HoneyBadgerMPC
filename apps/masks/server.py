@@ -10,8 +10,8 @@ what this may cause, besides the server attempting to unmask messages that
 have already been unmasked ...
 """
 import asyncio
-import json
 import logging
+import pickle
 import time
 from functools import partial
 from pathlib import Path
@@ -51,6 +51,7 @@ class Server:
         contract_context,
         http_host="0.0.0.0",
         http_port=8080,
+        sharestore=None,
     ):
         """
         Parameters
@@ -78,9 +79,7 @@ class Server:
         self._init_tasks()
         self._http_host = http_host
         self._http_port = http_port
-
         self._subscribe_task, subscribe = subscribe_recv(recv)
-
         self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
 
         # NOTE The input masks are not persisted, meaning that if the server
@@ -107,97 +106,25 @@ class Server:
         # persistence mechanism.
         # import plyvel
         # self._db = plyvel.DB(f"db{self.myid}", create_if_missing=True)
-        self._dbfile = f"db{self.myid}.json"
-        try:
-            with open(self._dbfile) as f:
-                self._inputmasks = json.load(f)
-        except FileNotFoundError:
-            self._inputmasks = []
+        self.sharestore = sharestore
+
+    def _create_task(self, coro, *, name=None):
+        task = asyncio.ensure_future(coro)
+        task.add_done_callback(print_exception_callback)
+        return task
 
     def _init_tasks(self):
-        self._task1 = asyncio.ensure_future(self._offline_inputmasks_loop())
-        self._task1.add_done_callback(print_exception_callback)
-        self._task2 = asyncio.ensure_future(self._client_request_loop())
-        self._task2.add_done_callback(print_exception_callback)
-        self._task3 = asyncio.ensure_future(self._mpc_loop())
-        self._task3.add_done_callback(print_exception_callback)
-        self._task4 = asyncio.ensure_future(self._mpc_initiate_loop())
-        self._task4.add_done_callback(print_exception_callback)
-        # self._http_server = asyncio.create_task(self._client_request_loop())
-        # self._http_server.add_done_callback(print_exception_callback)
-
-    @classmethod
-    def from_dict_config(cls, config, *, send, recv):
-        """Create a ``Server`` class instance from a config dict.
-
-        Parameters
-        ----------
-        config : dict
-            The configuration to create the ``Server`` instance.
-        send:
-            Function used to send messages.
-        recv:
-            Function used to receive messages.
-        """
-        from web3 import HTTPProvider, Web3
-        from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
-        from apps.utils import get_contract_address
-
-        eth_config = config["eth"]
-        # contract
-        contract_context = {
-            "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
-            "filepath": eth_config["contract_path"],
-            "name": eth_config["contract_name"],
-        }
-
-        # web3
-        eth_rpc_hostname = eth_config["rpc_host"]
-        eth_rpc_port = eth_config["rpc_port"]
-        w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
-        w3 = Web3(HTTPProvider(w3_endpoint_uri))
-
-        return cls(
-            config["session_id"],
-            config["id"],
-            send,
-            recv,
-            w3,
-            contract_context=contract_context,
-            http_host=config["host"],
-            http_port=config["port"],
-        )
-
-    @classmethod
-    def from_toml_config(cls, config_path, *, send, recv):
-        """Create a ``Server`` class instance from a config TOML file.
-
-        Parameters
-        ----------
-        config_path : str
-            The path to the TOML configuration file to create the
-            ``Server`` instance.
-        send:
-            Function used to send messages.
-        recv:
-            Function used to receive messages.
-        """
-        config = toml.load(config_path)
-        # TODO extract resolving of relative path into utils
-        context_path = Path(config_path).resolve().parent.joinpath(config["context"])
-        config["eth"]["contract_path"] = context_path.joinpath(
-            config["eth"]["contract_path"]
-        )
-        return cls.from_dict_config(config, send=send, recv=recv)
+        self._preprocessing = self._create_task(self._offline_inputmasks_loop())
+        self._http_server = self._create_task(self._client_request_loop())
+        self._mpc = self._create_task(self._mpc_loop())
+        self._mpc_init = self._create_task(self._mpc_initiate_loop())
 
     async def join(self):
-        await self._task1
-        await self._task2
-        await self._task3
-        await self._task4
+        await self._preprocessing
+        await self._http_server
+        await self._mpc
+        await self._mpc_init
         await self._subscribe_task
-        # await self._http_server
-        await self._client_request_loop()
 
     #######################
     # Step 1. Offline Phase
@@ -206,10 +133,10 @@ class Server:
     1a. offline inputmasks
     """
 
-    async def _preprocess_report(self):
+    async def _preprocess_report(self, *, number_of_inputmasks):
         # Submit the preprocessing report
         tx_hash = self.contract.functions.preprocess_report(
-            [len(self._inputmasks)]
+            [number_of_inputmasks]
         ).transact({"from": self.w3.eth.accounts[self.myid]})
 
         # Wait for the tx receipt
@@ -255,14 +182,17 @@ class Server:
             logging.debug(f"[{self.myid}] Randousha finished in {end_time-start_time}")
             logging.debug(f"len(rs_t): {len(rs_t)}")
             logging.debug(f"rs_t: {rs_t}")
-            self._inputmasks += rs_t
-
-            # TODO persist the inputmasks to disk, for recovery
-            with open(self._dbfile, "w") as f:
-                json.dump(self._inputmasks, f)
+            try:
+                _inputmasks = self.sharestore[b"inputmasks"]
+            except KeyError:
+                inputmasks = []
+            else:
+                inputmasks = pickle.loads(_inputmasks)
+            inputmasks += rs_t
+            self.sharestore[b"inputmasks"] = pickle.dumps(inputmasks)
 
             # Step 1. III) Submit an updated report
-            await self._preprocess_report()
+            await self._preprocess_report(number_of_inputmasks=len(inputmasks))
 
             # Increment the preprocessing round and continue
             preproc_round += 1
@@ -283,7 +213,18 @@ class Server:
         @routes.get("/inputmasks/{idx}")
         async def _handler(request):
             idx = int(request.match_info.get("idx"))
-            inputmask = self._inputmasks[idx]
+            try:
+                _inputmasks = self.sharestore[b"inputmasks"]
+            except KeyError:
+                inputmasks = []
+            else:
+                inputmasks = pickle.loads(_inputmasks)
+            try:
+                inputmask = inputmasks[idx]
+            except IndexError:
+                logging.error(f"No input mask at index {idx}")
+                raise
+
             data = {
                 "inputmask": inputmask,
                 "server_id": self.myid,
@@ -325,7 +266,13 @@ class Server:
             masked_message = field(int.from_bytes(masked_message_bytes, "big"))
             logging.info(f"masked_message: {masked_message}")
             try:
-                inputmask = self._inputmasks[inputmask_idx]  # Get the input mask
+                _inputmasks = self.sharestore[b"inputmasks"]
+            except KeyError:
+                inputmasks = []
+            else:
+                inputmasks = pickle.loads(_inputmasks)
+            try:
+                inputmask = inputmasks[inputmask_idx]  # Get the input mask
             except IndexError:
                 logging.error(f"No input mask at index {inputmask_idx}")
                 raise
@@ -395,3 +342,68 @@ class Server:
             else:
                 logging.info(f"[{self.myid}] initiate_mpc failed (redundant?)")
             await asyncio.sleep(10)
+
+    @classmethod
+    def from_dict_config(cls, config, *, send, recv, sharestore=None):
+        """Create a ``Server`` class instance from a config dict.
+
+        Parameters
+        ----------
+        config : dict
+            The configuration to create the ``Server`` instance.
+        send:
+            Function used to send messages.
+        recv:
+            Function used to receive messages.
+        """
+        from web3 import HTTPProvider, Web3
+        from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
+        from apps.utils import get_contract_address
+
+        eth_config = config["eth"]
+        # contract
+        contract_context = {
+            "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
+            "filepath": eth_config["contract_path"],
+            "name": eth_config["contract_name"],
+        }
+
+        # web3
+        eth_rpc_hostname = eth_config["rpc_host"]
+        eth_rpc_port = eth_config["rpc_port"]
+        w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
+        w3 = Web3(HTTPProvider(w3_endpoint_uri))
+
+        return cls(
+            config["session_id"],
+            config["id"],
+            send,
+            recv,
+            w3,
+            contract_context=contract_context,
+            http_host=config["host"],
+            http_port=config["port"],
+            sharestore=sharestore,
+        )
+
+    @classmethod
+    def from_toml_config(cls, config_path, *, send, recv, sharestore=None):
+        """Create a ``Server`` class instance from a config TOML file.
+
+        Parameters
+        ----------
+        config_path : str
+            The path to the TOML configuration file to create the
+            ``Server`` instance.
+        send:
+            Function used to send messages.
+        recv:
+            Function used to receive messages.
+        """
+        config = toml.load(config_path)
+        # TODO extract resolving of relative path into utils
+        context_path = Path(config_path).resolve().parent.joinpath(config["context"])
+        config["eth"]["contract_path"] = context_path.joinpath(
+            config["eth"]["contract_path"]
+        )
+        return cls.from_dict_config(config, send=send, recv=recv, sharestore=sharestore)

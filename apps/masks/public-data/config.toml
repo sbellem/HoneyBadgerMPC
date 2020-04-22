@@ -1,37 +1,37 @@
 n = 4
 t = 1
-deployer_address = "0x2F65967E12245C5878CfF63c8056f2e666ECB5Bf"
+deployer_address = "0x476468Dad31BD5706b99710c30F624327963af08"
 [[servers]]
 id = 0
 host = "mpcnet"
 port = 8080
 address = "0x4106F7F1F23Ea636ed395c8ba7E84945E5AFb1f6"
-eth_address = "0x5382Ea096B8b6A5F673bca779a98083F2a9b64d7"
+eth_address = "0x40408f0A37626891B66AA61f0F3605C8C9182696"
 
 [[servers]]
 id = 1
 host = "mpcnet"
 port = 8081
 address = "0xAC8534EAf2777BF1558052Bf876e2248e8897231"
-eth_address = "0x271148614D506b54310A22c6FCBcef96F6fb5925"
+eth_address = "0x16517b1211Efaf618893BE241d3Bb2Be1721cB6D"
 
 [[servers]]
 id = 2
 host = "mpcnet"
 port = 8082
 address = "0xa6688B66878af966f6Cc13bc5E8E49717209e648"
-eth_address = "0xa9BD7E03a2F82848E9eAEba373CaEC945DCC9564"
+eth_address = "0x0E16d0781fA9ED20FB9fEd7A1205D96b0c8CF69B"
 
 [[servers]]
 id = 3
 host = "mpcnet"
 port = 8083
 address = "0xE2F90DDA3F39b048284A259984149cDce38cd32F"
-eth_address = "0xFB3b7e456d84AA3D5AC7e2B1B86931De378408C2"
+eth_address = "0xA22D2484452a92d5fFbA4bdB9CCF67312E4950e1"
 
 [eth]
 rpc_host = "blockchain"
 rpc_port = 8545
 contract_filename = "contract.sol"
 contract_name = "MpcCoordinator"
-contract_address = "0x3aa63fE32fC92118Ee17B0c518f322F6a821A446"
+contract_address = "0x3d07B81d3ab96EF489558eE160b4B5D09c8b3134"

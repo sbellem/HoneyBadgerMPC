@@ -56,7 +56,7 @@ DOCS_REQUIRE = [
     "recommonmark",
 ]
 
-ETH_REQUIRES = ["bitcoin", "web3", "ethereum"]
+ETH_REQUIRES = ["bitcoin", "web3", "ethereum", "plyvel"]
 
 AWS_REQUIRES = ["boto3", "paramiko"]
 
