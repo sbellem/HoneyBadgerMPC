@@ -3,6 +3,7 @@ import logging
 import traceback
 from asyncio import Queue
 from collections import defaultdict
+from functools import partial
 from typing import Callable
 
 from .typecheck import TypeCheck
@@ -111,3 +112,8 @@ def subscribe_recv(recv):
 
 def _get_send_recv(tag, *, send, subscribe):
     return wrap_send(tag, send), subscribe(tag)
+
+
+def _get_pubsub_channel(send, recv):
+    sub_task, sub = subscribe_recv(recv)
+    return sub_task, partial(_get_send_recv, send=send, subscribe=sub)

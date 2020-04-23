@@ -4,8 +4,6 @@ import pickle
 import time
 from functools import partial
 
-from aiohttp import web
-
 from web3.contract import ConciseContract
 
 from apps.utils import fetch_contract, wait_for_receipt
@@ -60,10 +58,10 @@ class PrePreprocessor:
         recv,
         w3,
         *,
-        contract_context,
-        http_host="0.0.0.0",
-        http_port=8080,
+        contract=None,
+        contract_context=None,
         sharestore,
+        channel=None,
     ):
         """
         Parameters
@@ -86,14 +84,18 @@ class PrePreprocessor:
         self.sid = sid
         self.myid = myid
         self._contract_context = contract_context
-        self.contract = fetch_contract(w3, **contract_context)
+        if not contract:
+            self.contract = fetch_contract(w3, **contract_context)
+        else:
+            self.contract = contract
         self.w3 = w3
         self._init_tasks()
-        self._http_host = http_host
-        self._http_port = http_port
         self.sharestore = sharestore
-        self._subscribe_task, subscribe = subscribe_recv(recv)
-        self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
+        if channel:
+            self.get_send_recv = channel
+        else:
+            self._subscribe_task, subscribe = subscribe_recv(recv)
+            self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
 
     # TODO put in utils
     def _create_task(self, coro, *, name=None):
@@ -103,21 +105,24 @@ class PrePreprocessor:
 
     def _init_tasks(self):
         self._preprocessing = self._create_task(self._offline_inputmasks_loop())
-        self._http_server = self._create_task(self._client_request_loop())
 
     async def start(self):
         await self._preprocessing
-        await self._http_server
-        await self._subscribe_task
+        # await self._subscribe_task
 
     async def _preprocess_report(self, *, number_of_inputmasks):
         # Submit the preprocessing report
+        logging.info(f"node {self.myid} submitting preprocessing report")
         tx_hash = self.contract.functions.preprocess_report(
             [number_of_inputmasks]
         ).transact({"from": self.w3.eth.accounts[self.myid]})
 
         # Wait for the tx receipt
+        logging.info(f"node {self.myid} waiting for preprocessing report receipt")
         tx_receipt = await wait_for_receipt(self.w3, tx_hash)
+        logging.info(
+            f"node {self.myid} received preprocessing report receipt: {tx_receipt}"
+        )
         return tx_receipt
 
     async def _offline_inputmasks_loop(self):
@@ -127,6 +132,7 @@ class PrePreprocessor:
         preproc_round = 0
         k = 1
         while True:
+            logging.info(f"starting preprocessing round {preproc_round}")
             # Step 1. I) Wait until needed
             while True:
                 inputmasks_available = contract_concise.inputmasks_available()
@@ -156,9 +162,9 @@ class PrePreprocessor:
             # In principle both sides of randousha could be used with
             # a small modification to randousha
             end_time = time.time()
-            logging.debug(f"[{self.myid}] Randousha finished in {end_time-start_time}")
-            logging.debug(f"len(rs_t): {len(rs_t)}")
-            logging.debug(f"rs_t: {rs_t}")
+            logging.info(f"[{self.myid}] Randousha finished in {end_time-start_time}")
+            logging.info(f"len(rs_t): {len(rs_t)}")
+            logging.info(f"rs_t: {rs_t}")
             try:
                 _inputmasks = self.sharestore[b"inputmasks"]
             except KeyError:
@@ -173,49 +179,3 @@ class PrePreprocessor:
 
             # Increment the preprocessing round and continue
             preproc_round += 1
-
-    ##################################
-    # Web server for input mask shares
-    ##################################
-
-    async def _client_request_loop(self):
-        """ Task 2. Handling client input
-
-        .. todo:: if a client requests a share, check if it is
-            authorized and if so send it along
-
-        """
-        routes = web.RouteTableDef()
-
-        @routes.get("/inputmasks/{idx}")
-        async def _handler(request):
-            idx = int(request.match_info.get("idx"))
-            try:
-                _inputmasks = self.sharestore[b"inputmasks"]
-            except KeyError:
-                inputmasks = []
-            else:
-                inputmasks = pickle.loads(_inputmasks)
-            try:
-                inputmask = inputmasks[idx]
-            except IndexError:
-                logging.error(f"No input mask at index {idx}")
-                raise
-
-            data = {
-                "inputmask": inputmask,
-                "server_id": self.myid,
-                "server_port": self._http_port,
-            }
-            return web.json_response(data)
-
-        app = web.Application()
-        app.add_routes(routes)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, host=self._http_host, port=self._http_port)
-        await site.start()
-        print(f"======= Serving on http://{self._http_host}:{self._http_port}/ ======")
-        # pause here for very long time by serving HTTP requests and
-        # waiting for keyboard interruption
-        await asyncio.sleep(100 * 3600)

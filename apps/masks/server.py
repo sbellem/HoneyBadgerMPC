@@ -12,11 +12,8 @@ have already been unmasked ...
 import asyncio
 import logging
 import pickle
-import time
 from functools import partial
 from pathlib import Path
-
-from aiohttp import web
 
 import toml
 
@@ -27,7 +24,6 @@ from apps.utils import fetch_contract, wait_for_receipt
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
 from honeybadgermpc.mpc import Mpc
-from honeybadgermpc.offline_randousha import randousha
 from honeybadgermpc.utils.misc import (
     _get_send_recv,
     print_exception_callback,
@@ -48,10 +44,10 @@ class Server:
         recv,
         w3,
         *,
-        contract_context,
-        http_host="0.0.0.0",
-        http_port=8080,
+        contract=None,
+        contract_context=None,
         sharestore=None,
+        channel=None,
     ):
         """
         Parameters
@@ -74,38 +70,17 @@ class Server:
         self.sid = sid
         self.myid = myid
         self._contract_context = contract_context
-        self.contract = fetch_contract(w3, **contract_context)
+        if not contract:
+            self.contract = fetch_contract(w3, **contract_context)
+        else:
+            self.contract = contract
         self.w3 = w3
         self._init_tasks()
-        self._http_host = http_host
-        self._http_port = http_port
-        self._subscribe_task, subscribe = subscribe_recv(recv)
-        self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
-
-        # NOTE The input masks are not persisted, meaning that if the server
-        # stops and restarts it will be in an inconsistent state with the state
-        # persisted in the blockchain coordinator contract. When the server
-        # produces input masks it sends the new number of input masks in
-        # self._inputmasks to the contract which will persist that new number
-        # and use it to compute the number of masks of available. Now, the
-        # server produces masks based on the result of querying the contract
-        # via the function `inputmasks_available()`. So if the server restarted
-        # its self._inputmasks list will be empty meanwhile the contract may
-        # have recorded that 100 inputmasks were available. If the result of
-        # calling inputmasks_available() yields a number higher than a predefined
-        # target then the server will wait until the number of available masks is
-        # lower than this target before producing new masks.
-        #
-        # Another problem is that the server upon processing a masked message
-        # from a client may not have the corresponding share of the mask that
-        # was used by the client.
-        #
-        # The input masks (shares) must be persisted.
-        #
-        # TODO Persist the input masks to LevelDB or some other lightweight
-        # persistence mechanism.
-        # import plyvel
-        # self._db = plyvel.DB(f"db{self.myid}", create_if_missing=True)
+        if channel:
+            self.get_send_recv = channel
+        else:
+            self._subscribe_task, subscribe = subscribe_recv(recv)
+            self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
         self.sharestore = sharestore
 
     def _create_task(self, coro, *, name=None):
@@ -114,134 +89,13 @@ class Server:
         return task
 
     def _init_tasks(self):
-        self._preprocessing = self._create_task(self._offline_inputmasks_loop())
-        self._http_server = self._create_task(self._client_request_loop())
         self._mpc = self._create_task(self._mpc_loop())
         self._mpc_init = self._create_task(self._mpc_initiate_loop())
 
     async def join(self):
-        await self._preprocessing
-        await self._http_server
         await self._mpc
         await self._mpc_init
-        await self._subscribe_task
-
-    #######################
-    # Step 1. Offline Phase
-    #######################
-    """
-    1a. offline inputmasks
-    """
-
-    async def _preprocess_report(self, *, number_of_inputmasks):
-        # Submit the preprocessing report
-        tx_hash = self.contract.functions.preprocess_report(
-            [number_of_inputmasks]
-        ).transact({"from": self.w3.eth.accounts[self.myid]})
-
-        # Wait for the tx receipt
-        tx_receipt = await wait_for_receipt(self.w3, tx_hash)
-        return tx_receipt
-
-    async def _offline_inputmasks_loop(self):
-        contract_concise = ConciseContract(self.contract)
-        n = contract_concise.n()
-        t = contract_concise.t()
-        preproc_round = 0
-        k = 1
-        while True:
-            # Step 1. I) Wait until needed
-            while True:
-                inputmasks_available = contract_concise.inputmasks_available()
-                totalmasks = contract_concise.preprocess()
-
-                logging.info(f"available input masks: {inputmasks_available}")
-                logging.info(f"total input masks: {totalmasks}")
-                # Policy: try to maintain a buffer of 10 input masks
-                target = 10
-                if inputmasks_available < target:
-                    break
-                # already have enough input masks, sleep
-                await asyncio.sleep(5)
-
-            # Step 1. II) Run Randousha
-            logging.info(
-                f"[{self.myid}] totalmasks: {totalmasks} \
-                inputmasks available: {inputmasks_available} \
-                target: {target} Initiating Randousha {k * (n - 2*t)}"
-            )
-            send, recv = self.get_send_recv(f"preproc:inputmasks:{preproc_round}")
-            start_time = time.time()
-            rs_t, rs_2t = zip(*await randousha(n, t, k, self.myid, send, recv, field))
-            assert len(rs_t) == len(rs_2t) == k * (n - 2 * t)
-
-            # Note: here we just discard the rs_2t
-            # In principle both sides of randousha could be used with
-            # a small modification to randousha
-            end_time = time.time()
-            logging.debug(f"[{self.myid}] Randousha finished in {end_time-start_time}")
-            logging.debug(f"len(rs_t): {len(rs_t)}")
-            logging.debug(f"rs_t: {rs_t}")
-            try:
-                _inputmasks = self.sharestore[b"inputmasks"]
-            except KeyError:
-                inputmasks = []
-            else:
-                inputmasks = pickle.loads(_inputmasks)
-            inputmasks += rs_t
-            self.sharestore[b"inputmasks"] = pickle.dumps(inputmasks)
-
-            # Step 1. III) Submit an updated report
-            await self._preprocess_report(number_of_inputmasks=len(inputmasks))
-
-            # Increment the preprocessing round and continue
-            preproc_round += 1
-
-    ##################################
-    # Web server for input mask shares
-    ##################################
-
-    async def _client_request_loop(self):
-        """ Task 2. Handling client input
-
-        .. todo:: if a client requests a share, check if it is
-            authorized and if so send it along
-
-        """
-        routes = web.RouteTableDef()
-
-        @routes.get("/inputmasks/{idx}")
-        async def _handler(request):
-            idx = int(request.match_info.get("idx"))
-            try:
-                _inputmasks = self.sharestore[b"inputmasks"]
-            except KeyError:
-                inputmasks = []
-            else:
-                inputmasks = pickle.loads(_inputmasks)
-            try:
-                inputmask = inputmasks[idx]
-            except IndexError:
-                logging.error(f"No input mask at index {idx}")
-                raise
-
-            data = {
-                "inputmask": inputmask,
-                "server_id": self.myid,
-                "server_port": self._http_port,
-            }
-            return web.json_response(data)
-
-        app = web.Application()
-        app.add_routes(routes)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, host=self._http_host, port=self._http_port)
-        await site.start()
-        print(f"======= Serving on http://{self._http_host}:{self._http_port}/ ======")
-        # pause here for very long time by serving HTTP requests and
-        # waiting for keyboard interruption
-        await asyncio.sleep(100 * 3600)
+        # await self._subscribe_task
 
     async def _mpc_loop(self):
         # Task 3. Participating in MPC epochs
@@ -305,7 +159,9 @@ class Server:
             if rich_logs:
                 epoch = rich_logs[0]["args"]["epoch"]
                 output = rich_logs[0]["args"]["output"]
+                logging.info(40 * "*")
                 logging.info(f"[{self.myid}] MPC OUTPUT[{epoch}] {output}")
+                logging.info(40 * "*")
 
             epoch += 1
 

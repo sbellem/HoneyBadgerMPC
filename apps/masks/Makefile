@@ -27,6 +27,9 @@ clean-pyc: ## remove Python file artifacts
 	docker-compose run --no-deps --rm mpcnet find . -name '*~' -exec rm -f {} +
 	docker-compose run --no-deps --rm mpcnet find . -name '__pycache__' -exec rm -fr {} +
 
+rm-dbs:
+	docker-compose run --no-deps --rm mpcnet rm -rf apps/masks/db*
+
 down: ## stop and remove containers, networks, images, and volumes
 	docker-compose down
 
