@@ -2,20 +2,15 @@ import asyncio
 import logging
 import pickle
 import time
-from functools import partial
 
 from web3.contract import ConciseContract
 
-from apps.utils import fetch_contract, wait_for_receipt
+from apps.utils import wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
 from honeybadgermpc.offline_randousha import randousha
-from honeybadgermpc.utils.misc import (
-    _get_send_recv,
-    print_exception_callback,
-    subscribe_recv,
-)
+from honeybadgermpc.utils.misc import print_exception_callback
 
 field = GF(Subgroup.BLS12_381)
 
@@ -51,17 +46,7 @@ class PrePreprocessor:
     """
 
     def __init__(
-        self,
-        sid,
-        myid,
-        send,
-        recv,
-        w3,
-        *,
-        contract=None,
-        contract_context=None,
-        sharestore,
-        channel=None,
+        self, sid, myid, w3, *, contract=None, sharestore, channel=None,
     ):
         """
         Parameters
@@ -83,19 +68,11 @@ class PrePreprocessor:
         """
         self.sid = sid
         self.myid = myid
-        self._contract_context = contract_context
-        if not contract:
-            self.contract = fetch_contract(w3, **contract_context)
-        else:
-            self.contract = contract
+        self.contract = contract
         self.w3 = w3
         self._init_tasks()
         self.sharestore = sharestore
-        if channel:
-            self.get_send_recv = channel
-        else:
-            self._subscribe_task, subscribe = subscribe_recv(recv)
-            self.get_send_recv = partial(_get_send_recv, send=send, subscribe=subscribe)
+        self.get_send_recv = channel
 
     # TODO put in utils
     def _create_task(self, coro, *, name=None):

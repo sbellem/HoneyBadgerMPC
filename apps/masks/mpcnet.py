@@ -7,10 +7,11 @@ import plyvel
 import toml
 
 from apps.masks.httpserver import HTTPServer
+from apps.masks.mpcserver import MPCProgRunner, MPCServer
 from apps.masks.preprocessor import PrePreprocessor
-from apps.masks.server import Server
 from apps.sharestore import LevelDB
-from apps.utils import fetch_contract
+
+# from apps.utils import fetch_contract
 
 from honeybadgermpc.config import NodeDetails
 from honeybadgermpc.ipc import NodeCommunicator
@@ -43,17 +44,19 @@ def _create_w3(eth_config):
 class MPCNet:
     def __init__(
         self,
-        servers,
         *,
-        preprocessors=None,
-        http_servers=None,
+        servers=tuple(4 * [None]),
         ncs=None,
-        sub_tasks=None,
+        preprocessors=tuple(4 * [None]),
+        http_servers=tuple(4 * [None]),
+        sub_tasks=tuple(4 * [None]),
+        mpcservers=tuple(4 * [None]),
     ):
         self.preprocessors = preprocessors
         self.http_servers = http_servers
         self.servers = servers
         self.sub_tasks = sub_tasks
+        self.mpcservers = mpcservers
         pp_elements = PreProcessedElements()
         pp_elements.clear_preprocessing()  # deletes sharedata/ if present
 
@@ -77,14 +80,15 @@ class MPCNet:
         }
         contract_context = _get_contract_context(config["eth"])
         w3 = _create_w3(config["eth"])
-        contract = fetch_contract(w3, **contract_context)
+        # contract = fetch_contract(w3, **contract_context)
 
-        preprocessors = []
-        http_servers = []
-        servers = []
-        ncs = []
-        sub_tasks = []
         session_id = "sid"
+        ncs = []
+        mpcservers = []
+        # preprocessors = []
+        # http_servers = []
+        # servers = []
+        # sub_tasks = []
         for i in range(n):
             server_config = {k: v for k, v in config["servers"][i].items()}
             server_config.update(base_config, session_id="sid")
@@ -103,65 +107,82 @@ class MPCNet:
             # sharestore = MemoryDB({}) # use a dict
 
             # from functools import partial
-            from honeybadgermpc.utils.misc import _get_pubsub_channel
+            # from honeybadgermpc.utils.misc import _get_pubsub_channel
 
             # _subscribe_task, subscribe = subscribe_recv(nc.recv)
             # channel = partial(_get_send_recv, send=nc.send, subscribe=subscribe)
-            sub_task, channel = _get_pubsub_channel(nc.send, nc.recv)
-            sub_tasks.append(sub_task)
+            # sub_task, channel = _get_pubsub_channel(nc.send, nc.recv)
+            # sub_tasks.append(sub_task)
             # channel = None
 
-            preprocessor = PrePreprocessor(
+            # preprocessor = PrePreprocessor(
+            #    session_id,
+            #    myid,
+            #    w3,
+            #    contract=contract,
+            #    # contract_context=contract_context,
+            #    sharestore=sharestore,
+            #    channel=channel,
+            # )
+            # preprocessors.append(preprocessor)
+            ## preprocessors.append(None)
+            # http_server = HTTPServer(
+            #    session_id,
+            #    myid,
+            #    http_host=server_config["host"],
+            #    http_port=server_config["port"],
+            #    sharestore=sharestore,
+            # )
+            # http_servers.append(http_server)
+            # server = MPCProgRunner(
+            #    session_id,
+            #    myid,
+            #    w3,
+            #    contract=contract,
+            #    sharestore=sharestore,
+            #    channel=channel,
+            # )
+            # servers.append(server)
+            http_context = dict(host=server_config["host"], port=server_config["port"])
+            mpcserver = MPCServer(
                 session_id,
                 myid,
-                nc.send,
-                nc.recv,
-                w3,
-                contract=contract,
-                # contract_context=contract_context,
+                send=nc.send,
+                recv=nc.recv,
+                w3=w3,
+                contract_context=contract_context,
                 sharestore=sharestore,
-                channel=channel,
+                http_context=http_context,
+                preprocessor_class=PrePreprocessor,
+                httpserver_class=HTTPServer,
+                mpcprogrunner_class=MPCProgRunner,
             )
-            preprocessors.append(preprocessor)
-            # preprocessors.append(None)
-            http_server = HTTPServer(
-                session_id,
-                myid,
-                http_host=server_config["host"],
-                http_port=server_config["port"],
-                sharestore=sharestore,
-            )
-            http_servers.append(http_server)
-            server = Server(
-                session_id,
-                myid,
-                nc.send,
-                nc.recv,
-                w3,
-                contract=contract,
-                # contract_context=contract_context,
-                sharestore=sharestore,
-                channel=channel,
-            )
-            servers.append(server)
-            servers.append(None)
+            mpcservers.append(mpcserver)
+
         return cls(
-            servers,
-            preprocessors=preprocessors,
-            http_servers=http_servers,
             ncs=ncs,
-            sub_tasks=sub_tasks,
+            # servers=servers,
+            # preprocessors=preprocessors,
+            # http_servers=http_servers,
+            # sub_tasks=sub_tasks,
+            mpcservers=mpcservers,
         )
 
     async def start(self):
-        for i, (preprocessor, http_server, server, sub_task) in enumerate(
-            zip(self.preprocessors, self.http_servers, self.servers, self.sub_tasks)
+        for i, (preprocessor, http_server, server, mpcserver, sub_task) in enumerate(
+            zip(
+                self.preprocessors,
+                self.http_servers,
+                self.servers,
+                self.mpcservers,
+                self.sub_tasks,
+            )
         ):
-            # for i, server in enumerate(self.servers):
-            await preprocessor.start()
-            await http_server.start()
-            await server.join()
-            await sub_task
+            # await preprocessor.start()
+            # await http_server.start()
+            # await server.join()
+            # await sub_task
+            await mpcserver.start()
             await self.ncs[i]._exit()
 
 
