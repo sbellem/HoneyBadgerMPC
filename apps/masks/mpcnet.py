@@ -7,7 +7,8 @@ import plyvel
 import toml
 
 from apps.masks.httpserver import HTTPServer
-from apps.masks.mpcserver import MPCProgRunner, MPCServer
+from apps.masks.mpcprogrunner import MPCProgRunner
+from apps.masks.mpcserver import MPCServer
 from apps.masks.preprocessor import PrePreprocessor
 from apps.sharestore import LevelDB
 
@@ -80,15 +81,10 @@ class MPCNet:
         }
         contract_context = _get_contract_context(config["eth"])
         w3 = _create_w3(config["eth"])
-        # contract = fetch_contract(w3, **contract_context)
 
         session_id = "sid"
         ncs = []
         mpcservers = []
-        # preprocessors = []
-        # http_servers = []
-        # servers = []
-        # sub_tasks = []
         for i in range(n):
             server_config = {k: v for k, v in config["servers"][i].items()}
             server_config.update(base_config, session_id="sid")
@@ -104,45 +100,6 @@ class MPCNet:
             db_path = PARENT_DIR.joinpath(f"db{i}")
             plyvel.destroy_db(str(db_path))
             sharestore = LevelDB(db_path)  # use leveldb
-            # sharestore = MemoryDB({}) # use a dict
-
-            # from functools import partial
-            # from honeybadgermpc.utils.misc import _get_pubsub_channel
-
-            # _subscribe_task, subscribe = subscribe_recv(nc.recv)
-            # channel = partial(_get_send_recv, send=nc.send, subscribe=subscribe)
-            # sub_task, channel = _get_pubsub_channel(nc.send, nc.recv)
-            # sub_tasks.append(sub_task)
-            # channel = None
-
-            # preprocessor = PrePreprocessor(
-            #    session_id,
-            #    myid,
-            #    w3,
-            #    contract=contract,
-            #    # contract_context=contract_context,
-            #    sharestore=sharestore,
-            #    channel=channel,
-            # )
-            # preprocessors.append(preprocessor)
-            ## preprocessors.append(None)
-            # http_server = HTTPServer(
-            #    session_id,
-            #    myid,
-            #    http_host=server_config["host"],
-            #    http_port=server_config["port"],
-            #    sharestore=sharestore,
-            # )
-            # http_servers.append(http_server)
-            # server = MPCProgRunner(
-            #    session_id,
-            #    myid,
-            #    w3,
-            #    contract=contract,
-            #    sharestore=sharestore,
-            #    channel=channel,
-            # )
-            # servers.append(server)
             http_context = dict(host=server_config["host"], port=server_config["port"])
             mpcserver = MPCServer(
                 session_id,
@@ -159,14 +116,7 @@ class MPCNet:
             )
             mpcservers.append(mpcserver)
 
-        return cls(
-            ncs=ncs,
-            # servers=servers,
-            # preprocessors=preprocessors,
-            # http_servers=http_servers,
-            # sub_tasks=sub_tasks,
-            mpcservers=mpcservers,
-        )
+        return cls(ncs=ncs, mpcservers=mpcservers,)
 
     async def start(self):
         for i, (preprocessor, http_server, server, mpcserver, sub_task) in enumerate(
@@ -178,10 +128,6 @@ class MPCNet:
                 self.sub_tasks,
             )
         ):
-            # await preprocessor.start()
-            # await http_server.start()
-            # await server.join()
-            # await sub_task
             await mpcserver.start()
             await self.ncs[i]._exit()
 
