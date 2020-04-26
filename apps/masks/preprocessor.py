@@ -10,7 +10,7 @@ from apps.utils import wait_for_receipt
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
 from honeybadgermpc.offline_randousha import randousha
-from honeybadgermpc.utils.misc import print_exception_callback
+from honeybadgermpc.utils.misc import _create_task
 
 field = GF(Subgroup.BLS12_381)
 
@@ -74,18 +74,11 @@ class PrePreprocessor:
         self.sharestore = sharestore
         self.get_send_recv = channel
 
-    # TODO put in utils
-    def _create_task(self, coro, *, name=None):
-        task = asyncio.ensure_future(coro)
-        task.add_done_callback(print_exception_callback)
-        return task
-
     def _init_tasks(self):
-        self._preprocessing = self._create_task(self._offline_inputmasks_loop())
+        self._preprocessing = _create_task(self._offline_inputmasks_loop())
 
     async def start(self):
         await self._preprocessing
-        # await self._subscribe_task
 
     async def _preprocess_report(self, *, number_of_inputmasks):
         # Submit the preprocessing report

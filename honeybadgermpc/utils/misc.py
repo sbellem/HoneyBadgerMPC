@@ -18,6 +18,12 @@ def print_exception_callback(future):
             raise ex
 
 
+def _create_task(coro, *, name=None):
+    task = asyncio.ensure_future(coro)
+    task.add_done_callback(print_exception_callback)
+    return task
+
+
 @TypeCheck()
 def wrap_send(tag: str, send: Callable):  # noqa: F821
     """Given a `send` function which takes a destination and message,

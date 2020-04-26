@@ -4,7 +4,7 @@ import pickle
 
 from aiohttp import web
 
-from honeybadgermpc.utils.misc import print_exception_callback
+from honeybadgermpc.utils.misc import _create_task
 
 
 class HTTPServer:
@@ -29,13 +29,8 @@ class HTTPServer:
         self.sharestore = sharestore
 
     # TODO put in utils
-    def _create_task(self, coro, *, name=None):
-        task = asyncio.create_task(coro)
-        task.add_done_callback(print_exception_callback)
-        return task
-
     def _init_tasks(self):
-        self._http_server = self._create_task(self._request_handler_loop())
+        self._http_server = _create_task(self._request_handler_loop())
 
     async def start(self):
         await self._http_server
