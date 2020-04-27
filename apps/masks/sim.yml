@@ -1,83 +1,85 @@
 version: '3.7'
 
 services:
-  blockchain:
-    container_name: blockchain
+  eth.blockchain.io:
+    container_name: eth.blockchain.io
     image: trufflesuite/ganache-cli
     command: --accounts 50 --blockTime 1 > acctKeys.json 2>&1
-  setup:
+  hbmpc.coordinator.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
+      - ../../apps/masks/configs/hbmpc.coordinator.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - blockchain
-    command: ["./apps/wait-for-it.sh", "blockchain:8545", "--", "python", "apps/masks/setup_phase.py"]
-  mpc_server_0:
+      - eth.blockchain.io
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/coordinator.py"]
+  hbmpc.peer0.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
-      - ../../apps/masks/configs/server_0.toml:/root/.hbmpc.toml
+      - ../../apps/masks/configs/hbmpc.peer0.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - setup
-    command: ["./apps/wait-for-it.sh", "blockchain:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
-  mpc_server_1:
+      - hbmpc.coordinator.io
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
+  hbmpc.peer1.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
-      - ../../apps/masks/configs/server_1.toml:/root/.hbmpc.toml
+      - ../../apps/masks/configs/hbmpc.peer1.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - setup
-    command: ["./apps/wait-for-it.sh", "blockchain:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
-  mpc_server_2:
+      - hbmpc.coordinator.io
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
+  hbmpc.peer2.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
-      - ../../apps/masks/configs/server_2.toml:/root/.hbmpc.toml
+      - ../../apps/masks/configs/hbmpc.peer2.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - setup
-    command: ["./apps/wait-for-it.sh", "blockchain:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
-  mpc_server_3:
+      - hbmpc.coordinator.io
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
+  hbmpc.peer3.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
-      - ../../apps/masks/configs/server_3.toml:/root/.hbmpc.toml
+      - ../../apps/masks/configs/hbmpc.peer3.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - setup
-    command: ["./apps/wait-for-it.sh", "blockchain:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
-  client:
+      - hbmpc.coordinator.io
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py", "--config-file", "~/.hbmpc.toml"]
+  hbmpc.client.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
+      - ../../apps/masks/configs/hbmpc.client.io.toml:/root/.hbmpc.toml
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
-      - mpcnet
-    command: ["./apps/wait-for-it.sh", "mpcnet:8083", "--", "python", "apps/masks/client.py"]
+      - hbmpc.peer3.io
+    command: ["./apps/wait-for-it.sh", "--port", "8080", "--", "python", "apps/masks/client.py", "--config-file", "~/.hbmpc.toml"]

@@ -1,12 +1,11 @@
-# MPC server configuation
+# Client configuation
 
 # the context is used to evaluate relative file paths
 context = "."
 
-id = 0
-host = "mpc_server_0"
-port = 8080
-dr_port = 7000
+id = "client"
+session_id = "sid"
+eth_address = ''
 
 # MPC network params
 n = 4
@@ -14,7 +13,7 @@ t = 1
 
 # Ethereum blockchain
 [eth]
-rpc_host = "blockchain"
+rpc_host = "eth.blockchain.io"
 rpc_port = 8545
 
 # contract
@@ -23,21 +22,27 @@ contract_path = "contract.sol"
 contract_name = "MpcCoordinator"
 public_data_dir = "public-data"
 
-# MPC peers 
+# MPC servers
 [[peers]]
 id = 1
-host = "mpc_server_1"
+host = "hbmpc.peer0.io"
+port = 8080
+dr_port = 7000
+
+[[peers]]
+id = 1
+host = "hbmpc.peer1.io"
 port = 8080
 dr_port = 7000
 
 [[peers]]
 id = 2
-host = "mpc_server_2"
+host = "hbmpc.peer2.io"
 port = 8080
 dr_port = 7000
 
 [[peers]]
 id = 3
-host = "mpc_server_3"
+host = "hbmpc.peer3.io"
 port = 8080
 dr_port = 7000
