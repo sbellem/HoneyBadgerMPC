@@ -33,6 +33,9 @@ rm-dbs:
 down: ## stop and remove containers, networks, images, and volumes
 	docker-compose down
 
+down-sim: ## stop and remove containers, networks, images, and volumes
+	docker-compose -f sim.yml down
+
 stop:
 	docker-compose stop blockchain mpcnet
 
@@ -50,6 +53,12 @@ run-without-tmux: rm clean ## run the example
 	docker-compose up setup
 	docker-compose up -d client
 	docker-compose logs --follow blockchain mpcnet client
+
+run-sim: down rm clean ## run the example
+	docker-compose -f sim.yml up -d eth.blockchain.io
+	docker-compose -f sim.yml up hbmpc.coordinator.io
+	docker-compose -f sim.yml up -d hbmpc.client.io
+	sh follow-sim-logs-with-tmux.sh
 
 setup: rm clean
 	docker-compose up -d blockchain
