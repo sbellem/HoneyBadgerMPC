@@ -125,22 +125,253 @@ class MPCServer:
         await self.subscribe_task
 
 
+async def main(
+    session_id,
+    myid,
+    *,
+    node_communicator,
+    w3,
+    contract_context,
+    sharestore,
+    http_context,
+    preprocessor_class,
+    httpserver_class,
+    mpcprogrunner_class,
+):
+
+    async with node_communicator as nc:
+        mpcserver = MPCServer(
+            session_id,
+            myid,
+            send=nc.send,
+            recv=nc.recv,
+            w3=w3,
+            contract_context=contract_context,
+            sharestore=sharestore,
+            http_context=http_context,
+            preprocessor_class=preprocessor_class,
+            httpserver_class=httpserver_class,
+            mpcprogrunner_class=mpcprogrunner_class,
+        )
+        await mpcserver.start()
+
+
 if __name__ == "__main__":
-    # import asyncio
+    import asyncio
     import argparse
+    import logging
     from pathlib import Path
+    import plyvel
+    import toml
+    from web3 import HTTPProvider, Web3
+    from honeybadgermpc.ipc import NodeCommunicator2
+    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
+    from apps.masks.httpserver import HTTPServer
+    from apps.masks.mpcprogrunner import MPCProgRunner
+    from apps.masks.preprocessor import PreProcessor
+    from apps.sharestore import LevelDB
+    from apps.utils import get_contract_address
 
     PARENT_DIR = Path(__file__).resolve().parent
     # arg parsing
-    default_config_path = PARENT_DIR.joinpath("mpcserver.toml")
+    default_hbmpc_home = Path.home().joinpath(".hbmpc")
+    default_config_path = default_hbmpc_home.joinpath("config.toml")
     parser = argparse.ArgumentParser(description="MPC server configuration.")
     parser.add_argument(
         "-c",
-        "--config-file",
+        "--config-path",
         default=str(default_config_path),
         help=f"Configuration file to use. Defaults to '{default_config_path}'.",
     )
+    parser.add_argument(
+        "--hbmpc-home",
+        type=str,
+        help=(
+            "Home directory to store configurations, public and private data. "
+            "If not provided, will fall back on value specified in config file. "
+            f"If absent from config file will default to {default_hbmpc_home}."
+        ),
+    )
+    parser.add_argument(
+        "--id",
+        type=int,
+        help=(
+            "Unique identifier for that server within an MPC network. "
+            "If not provided, will fall back on value specified in config file. "
+            "Failure to provide the id as a command line argument or in the config "
+            "file will result in an error."
+        ),
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        help=(
+            "Host or ip address of that MPC server. "
+            "If not provided, will fall back on value specified in config file. "
+            "Failure to provide the host as a command line argument or in the config "
+            "file will result in an error."
+        ),
+    )
+    default_mpc_port = 7000
+    parser.add_argument(
+        "--mpc-port",
+        type=int,
+        # default=default_mpc_port,
+        help=(
+            "Listening/router port for MPC communications. "
+            f"Defaults to '{default_mpc_port}' or to what is provided in config file. "
+            "Note that if that if a command line argument is provided it will "
+            " overwrite what is given in the config file."
+        ),
+    )
+    default_http_port = 8080
+    parser.add_argument(
+        "--http-port",
+        type=int,
+        # default=default_http_port,
+        help=(
+            "Listening port for HTTP client requests. "
+            f"Defaults to '{default_http_port}' or to what is provided in config file. "
+            "Note that if that if a command line argument is provided it will "
+            " overwrite what is given in the config file."
+        ),
+    )
+    parser.add_argument(
+        "--eth-rpc-host",
+        type=str,
+        help=(
+            "RPC host or ip address to connect to an ethereum node. "
+            "If not provided, will fall back on value specified in config file. "
+            "Failure to provide the ethereum rpc host as a command line argument "
+            "or in the config file will result in an error."
+        ),
+    )
+    default_eth_rpc_port = 8545
+    parser.add_argument(
+        "--eth-rpc-port",
+        type=int,
+        help=(
+            "RPC port to connect to an ethereum node. Defaults to "
+            f"'{default_eth_rpc_port}' or to what is provided in config file. "
+            "Note that if that if a command line argument is provided it will "
+            " overwrite what is given in the config file."
+        ),
+    )
+    default_db_path = "~/.hbmpc/db"
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        help=(
+            "Path to the directory where the db is to be located. "
+            f"Defaults to '{default_db_path}'."
+        ),
+    )
+    parser.add_argument(
+        "--reset-db", action="store_true", help="Resets the database. Be careful!",
+    )
+    parser.add_argument(
+        "--contract-address",
+        type=str,
+        help=(
+            "The ethereum address of the deployed coordinator contract. "
+            "If it is not provided, the config file will be looked at. "
+            "If absent from the config file, will fetch the address from "
+            f"the file {CONTRACT_ADDRESS_FILEPATH}."
+        ),
+    )
+    parser.add_argument(
+        "--contract-path",
+        type=str,
+        help=(
+            "The ethereum coordinator contract filepath. "
+            "If it is not provided, the config file will be looked at. "
+            "If absent from the config file, it will error."
+            # TODO - review the above
+        ),
+    )
+    default_contract_name = "MPCCoordinator"
+    parser.add_argument(
+        "--contract-name",
+        type=str,
+        help=(
+            "The ethereum coordinator contract name. If it is not provided, "
+            "the config file will be looked at. If absent from the config "
+            f"file, it will be set as {default_contract_name}."
+        ),
+    )
     args = parser.parse_args()
+    config = toml.load(args.config_path)
+    hbmpc_home = args.hbmpc_home or config.get("hbmpc_home", default_hbmpc_home)
+    mpc_port = args.mpc_port or config.get("mpc_port", default_mpc_port)
 
-    # Launch MPC server
-    # asyncio.run(main(args.config_file))
+    # eth node
+    eth_rpc_hostname = args.eth_rpc_host or config["eth"]["rpc_host"]
+    eth_rpc_port = args.eth_rpc_port or config["eth"].get(
+        "rpc_port", default_eth_rpc_port
+    )
+    w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
+    w3 = Web3(HTTPProvider(w3_endpoint_uri))
+
+    # For NodeCommunicator
+    try:
+        myid = args.id or config["id"]
+    except KeyError:
+        logging.error(
+            "Missing server id! Must be provided as a command line "
+            "argument or in the config file."
+        )
+        raise
+
+    try:
+        host = args.host or config["host"]
+    except KeyError:
+        logging.error(
+            "Missing server hostname or ip! Must be provided as a "
+            "command line argument or in the config file."
+        )
+        raise
+    peers = tuple(
+        {"id": peer["id"], "host": peer["host"], "port": peer["mpc_port"]}
+        for peer in config["peers"]
+    )
+    node_communicator = NodeCommunicator2(
+        myid=myid, host=host, port=mpc_port, peers_config=peers, linger_timeout=2
+    )
+
+    # db
+    db_path = Path(f"{args.db_path}").resolve()
+    if args.reset_db:
+        # NOTE: for testing purposes, we reset (destroy) the db before each run
+        plyvel.destroy_db(str(db_path))
+    sharestore = LevelDB(db_path)  # use leveldb
+
+    http_port = args.http_port or config["http_port"] or default_http_port
+
+    # contract context
+    contract_path = Path(args.contract_path or config["contract"]["path"]).expanduser()
+    contract_name = args.contract_name or config["contract"]["name"]
+    contract_address = args.contract_address or config["contract"].get("address")
+    if not contract_address:
+        contract_address = get_contract_address(
+            Path(hbmpc_home).joinpath("public/contract_address")
+        )
+    contract_context = {
+        "filepath": contract_path,
+        "name": contract_name,
+        "address": contract_address,
+    }
+
+    asyncio.run(
+        main(
+            "sid",
+            myid,
+            node_communicator=node_communicator,
+            w3=w3,
+            contract_context=contract_context,
+            sharestore=sharestore,
+            http_context={"host": host, "port": http_port},
+            preprocessor_class=PreProcessor,
+            httpserver_class=HTTPServer,
+            mpcprogrunner_class=MPCProgRunner,
+        )
+    )

@@ -15,7 +15,7 @@ from honeybadgermpc.utils.misc import _create_task
 field = GF(Subgroup.BLS12_381)
 
 
-class PrePreprocessor:
+class PreProcessor:
     """Class to generate preprocessing elements.
 
 

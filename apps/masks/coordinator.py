@@ -7,7 +7,6 @@ import toml
 
 from web3 import HTTPProvider, Web3
 
-from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
 from apps.utils import create_and_deploy_contract
 
 PARENT_DIR = Path(__file__).resolve().parent
@@ -51,7 +50,7 @@ if __name__ == "__main__":
     print(f"Deploying contract ...")
 
     # default_config_path = PARENT_DIR.joinpath("public-data/config.toml")
-    default_config_path = Path.home().joinpath(".hbmpc.toml")
+    default_config_path = Path.home().joinpath(".coordinator/config.toml")
     parser = argparse.ArgumentParser(description="Setup phase.")
     parser.add_argument(
         "-c",
@@ -59,19 +58,45 @@ if __name__ == "__main__":
         default=str(default_config_path),
         help=f"Configuration file to use. Defaults to '{default_config_path}'.",
     )
+    default_coordinator_home = Path.home().joinpath(".coordinator")
+    parser.add_argument(
+        "--coordinator-home",
+        type=str,
+        help=(
+            "Home directory to store configurations, public and private data. "
+            "If not provided, will fall back on value specified in config file. "
+            f"If absent from config file will default to {default_coordinator_home}."
+        ),
+    )
+    default_contract_address_path = default_coordinator_home.joinpath(
+        "public/contract_address"
+    )
+    parser.add_argument(
+        "--contract-address-path",
+        type=str,
+        help=(
+            "File path to write the contract address to. If not provided, "
+            " will fall back on value specified in config file. If absent "
+            f"from config file will default to {default_contract_address_path}."
+        ),
+    )
     args = parser.parse_args()
     config_file = args.config_file
     config = toml.load(config_file)
     print(config)
 
+    coordinator_home = args.coordinator_home or config.get(
+        "home", default_coordinator_home
+    )
+    contract_address_path = args.contract_address_path or config.get(
+        "contract_address_path", default_contract_address_path
+    )
     n = config["n"]
     t = config["t"]
-    eth_config = config["eth"]
-    contract_name = eth_config["contract_name"]
-    contract_filename = eth_config["contract_filename"]
-    contract_filepath = PARENT_DIR.joinpath(contract_filename)
-    eth_rpc_hostname = eth_config["rpc_host"]
-    eth_rpc_port = eth_config["rpc_port"]
+    contract_name = config["contract"]["name"]
+    contract_path = Path(config["contract"]["path"]).expanduser()
+    eth_rpc_hostname = config["eth"]["rpc_host"]
+    eth_rpc_port = config["eth"]["rpc_port"]
     w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
     w3 = Web3(HTTPProvider(w3_endpoint_uri))
 
@@ -85,23 +110,23 @@ if __name__ == "__main__":
     contract_address = deploy_contract(
         w3,
         contract_name=contract_name,
-        contract_filepath=contract_filepath,
+        contract_filepath=contract_path,
         n=n,
         t=t,
         deployer_addr=deployer_addr,
         mpc_addrs=mpc_addrs,
     )
     config["deployer_address"] = deployer_addr
-    config["eth"]["contract_address"] = contract_address
+    config["contract"]["address"] = contract_address
     logger.info(f"Contract deployed at address: {contract_address}")
     print(f"Contract deployed at address: {contract_address}")
 
     with open(config_file, "w") as f:
         toml.dump(config, f)
-    with open(CONTRACT_ADDRESS_FILEPATH, "w") as f:
+    with open(contract_address_path, "w") as f:
         f.write(contract_address)
 
-    logger.info(f"Wrote contract address to file: {CONTRACT_ADDRESS_FILEPATH}")
-    print(f"Wrote contract address to file: {CONTRACT_ADDRESS_FILEPATH}")
+    logger.info(f"Wrote contract address to file: {contract_address_path}")
+    print(f"Wrote contract address to file: {contract_address_path}")
     print(f"\nUpdated common config file: {config_file}\n")
     pprint.pprint(config)

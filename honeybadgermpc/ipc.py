@@ -149,6 +149,137 @@ class NodeCommunicator:
             await send_to_node([raw_msg])
 
 
+class NodeCommunicator2:
+    """Class providing communication channels for an MPC network.
+    The class is based on the ROUTER/DEALER pattern.
+
+    This class is a "clone" of ``NodeCommunicator`` for the time-being
+    as the goal is to make some improvements and possibly breaking away
+    from some interfaces. Thus, a new class, to prevent breaking code
+    that relies on the original implementation.
+
+    Notes
+    -----
+    Some resources on the ROUTER/DEALER pattern:
+
+    * http://zguide.zeromq.org/page:all#toc40
+    * http://wiki.zeromq.org/tutorials:dealer-and-router
+    * http://zguide.zeromq.org/py:rtdealer
+    * http://zguide.zeromq.org/py:rrbroker
+    * https://stackoverflow.com/a/23592408/2769475
+
+    """
+
+    LAST_MSG = None
+
+    def __init__(self, *, myid, host, port, peers_config, linger_timeout, setup=False):
+        logging.info(
+            f"Creating NodeCommunicator2 for node {myid} and peers {peers_config}"
+        )
+        self.myid = myid
+        self.host = host
+        self.port = port
+        self.peers_config = peers_config
+
+        self.bytes_sent = 0
+        self.benchmark_logger = logging.LoggerAdapter(
+            logging.getLogger("benchmark_logger"), {"node_id": myid}
+        )
+
+        self._dealer_tasks = []
+        self._router_task = None
+        self.linger_timeout = linger_timeout
+        self.zmq_context = Context(io_threads=cpu_count())
+
+        n = len(peers_config) + 1
+        self._receiver_queue = asyncio.Queue()
+        self._sender_queues = [None] * n
+        for i in range(n):
+            if i == self.myid:
+                self._sender_queues[i] = self._receiver_queue
+            else:
+                self._sender_queues[i] = asyncio.Queue()
+        self.already_setup = False
+        if setup:
+            self._setup()
+            self.already_setup = True
+
+    def send(self, node_id, msg):
+        logging.info(f"Queuing {msg} to send to node id {node_id}")
+        msg = (self.myid, msg) if node_id == self.myid else msg
+        self._sender_queues[node_id].put_nowait(msg)
+
+    async def recv(self):
+        return await self._receiver_queue.get()
+
+    async def __aenter__(self):
+        if not self.already_setup:
+            await self._setup()
+            self.already_setup = True
+        return self
+
+    async def _exit(self):
+        # Add None to the sender queues and drain out all the messages.
+        for i in range(len(self._sender_queues)):
+            if i != self.myid:
+                self._sender_queues[i].put_nowait(NodeCommunicator.LAST_MSG)
+        await asyncio.gather(*self._dealer_tasks)
+        logging.info("Dealer tasks finished.")
+        self._router_task.cancel()
+        logging.info("Router task cancelled.")
+        self.zmq_context.destroy(linger=self.linger_timeout * 1000)
+        self.benchmark_logger.info("Total bytes sent out: %d", self.bytes_sent)
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._exit()
+
+    async def _setup(self):
+        # Setup one router for a party, this acts as a
+        # server for receiving messages from other parties.
+        router = self.zmq_context.socket(ROUTER)
+        router.bind(f"tcp://*:{self.port}")
+        # Start a task to receive messages on this node.
+        self._router_task = asyncio.create_task(self._recv_loop(router))
+        self._router_task.add_done_callback(print_exception_callback)
+
+        # Setup one dealer per receving party. This is used
+        # as a client to send messages to other parties.
+        for peer in self.peers_config:
+            peer_id = peer["id"]
+            dealer = self.zmq_context.socket(DEALER)
+            # This identity is sent with each message. Setting it to myid, this is
+            # used to appropriately route the message. This is not a good idea since
+            # a node can pretend to send messages on behalf of other nodes.
+            dealer.setsockopt(IDENTITY, str(self.myid).encode())
+            dealer.connect(f"tcp://{peer['host']}:{peer['port']}")
+            # Setup a task which reads messages intended for this
+            # party from a queue and then sends them to this node.
+            task = asyncio.create_task(
+                self._process_node_messages(
+                    peer_id, self._sender_queues[peer_id], dealer.send_multipart
+                )
+            )
+            self._dealer_tasks.append(task)
+
+    async def _recv_loop(self, router):
+        while True:
+            sender_id, raw_msg = await router.recv_multipart()
+            msg = loads(raw_msg)
+            logging.info("[RECV] FROM: %s, MSG: %s,", sender_id, msg)
+            self._receiver_queue.put_nowait((int(sender_id), msg))
+
+    async def _process_node_messages(self, node_id, node_msg_queue, send_to_node):
+        while True:
+            msg = await node_msg_queue.get()
+            if msg is NodeCommunicator.LAST_MSG:
+                logging.info("No more messages to Node: %d can be sent.", node_id)
+                break
+            raw_msg = dumps(msg)
+            self.bytes_sent += len(raw_msg)
+            logging.info("[SEND] TO: %d, MSG: %s", node_id, msg)
+            await send_to_node([raw_msg])
+
+
 class ProcessProgramRunner(object):
     def __init__(self, peers_config, n, t, my_id, mpc_config=None, linger_timeout=2):
         self.peers_config = peers_config
