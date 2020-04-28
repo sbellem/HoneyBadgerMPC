@@ -8,11 +8,11 @@ else
     TMUX_CMD="new-window"
 fi
 
-tmux $TMUX_CMD "docker-compose -f sim.yml logs -f blockchain; sh" \; \
+tmux $TMUX_CMD "docker-compose -f sim.yml logs -f eth.blockchain.io; sh" \; \
     splitw -h -p 50 "docker-compose -f sim.yml logs -f hbmpc.coordinator.io; sh" \; \
     splitw -v -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer0.io; sh" \; \
-    splitw -h -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer1.io; sh" \; \
-    splitw -h -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer2.io; sh" \; \
-    splitw -h -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer3.io; sh" \; \
+    splitw -v -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer1.io; sh" \; \
+    splitw -v -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer2.io; sh" \; \
+    splitw -v -p 50 "docker-compose -f sim.yml logs -f hbmpc.peer3.io; sh" \; \
     selectp -t 0 \; \
-    splitw -v -p 50 "docker-compose -f sim.yml logs -f hbmpc.client.io; sh"
+    splitw -h -p 50 "docker-compose -f sim.yml logs -f hbmpc.client.io; sh"

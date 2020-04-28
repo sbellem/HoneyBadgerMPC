@@ -9,7 +9,7 @@ import toml
 from apps.masks.httpserver import HTTPServer
 from apps.masks.mpcprogrunner import MPCProgRunner
 from apps.masks.mpcserver import MPCServer
-from apps.masks.preprocessor import PrePreprocessor
+from apps.masks.preprocessor import PreProcessor
 from apps.sharestore import LevelDB
 
 # from apps.utils import fetch_contract
@@ -110,7 +110,7 @@ class MPCNet:
                 contract_context=contract_context,
                 sharestore=sharestore,
                 http_context=http_context,
-                preprocessor_class=PrePreprocessor,
+                preprocessor_class=PreProcessor,
                 httpserver_class=HTTPServer,
                 mpcprogrunner_class=MPCProgRunner,
             )

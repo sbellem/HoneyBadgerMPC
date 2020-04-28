@@ -72,7 +72,7 @@ class Client:
         # contract
         contract_context = {
             "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
-            "filepath": eth_config["contract_path"],
+            "filepath": Path(eth_config["contract_path"]).expanduser(),
             "name": eth_config["contract_name"],
         }
 
@@ -106,10 +106,10 @@ class Client:
         """
         config = toml.load(config_path)
         # TODO extract resolving of relative path into utils
-        context_path = Path(config_path).resolve().parent.joinpath(config["context"])
-        config["eth"]["contract_path"] = context_path.joinpath(
+        # context_path = Path(config_path).resolve().parent.joinpath(config["context"])
+        config["eth"]["contract_path"] = Path(
             config["eth"]["contract_path"]
-        )
+        ).expanduser()
         return cls.from_dict_config(config)
 
     async def _run(self):

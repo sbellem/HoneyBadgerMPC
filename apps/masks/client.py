@@ -25,4 +25,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Launch a client
-    asyncio.run(main(args.config_file))
+    asyncio.run(main(Path(args.config_file).expanduser()))

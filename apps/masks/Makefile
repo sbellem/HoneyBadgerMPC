@@ -54,13 +54,32 @@ run-without-tmux: rm clean ## run the example
 	docker-compose up -d client
 	docker-compose logs --follow blockchain mpcnet client
 
-run-sim: down rm clean ## run the example
+setup: rm clean
+	docker-compose up -d blockchain
+	docker-compose up setup
+	docker-compose rm --stop --force blockchain
+
+### sim
+clean-sim: clean-sim-pyc
+
+clean-sim-pyc: ## remove Python file artifacts
+	docker-compose -f sim.yml run --no-deps --rm hbmpc.peer0.io find . -name '*.pyc' -exec rm -f {} +
+	docker-compose -f sim.yml run --no-deps --rm hbmpc.peer0.io find . -name '*.pyo' -exec rm -f {} +
+	docker-compose -f sim.yml run --no-deps --rm hbmpc.peer0.io find . -name '*~' -exec rm -f {} +
+	docker-compose -f sim.yml run --no-deps --rm hbmpc.peer0.io find . -name '__pycache__' -exec rm -fr {} +
+
+down-sim: ## stop and remove containers, networks, images, and volumes
+	docker-compose -f sim.yml down
+
+stop-sim:
+	docker-compose -f sim.yml stop eth.blockchain.io hbmpc.peer0.io hbmpc.peer1.io hbmpc.peer2.io hbmpc.peer3.io
+
+rm-sim:
+	docker-compose -f sim.yml rm --stop --force eth.blockchain.io hbmpc.peer0.io hbmpc.peer1.io hbmpc.peer2.io hbmpc.peer3.io hbmpc.coordinator.io
+
+run-sim: down-sim rm-sim clean-sim ## run the example
 	docker-compose -f sim.yml up -d eth.blockchain.io
 	docker-compose -f sim.yml up hbmpc.coordinator.io
 	docker-compose -f sim.yml up -d hbmpc.client.io
 	sh follow-sim-logs-with-tmux.sh
 
-setup: rm clean
-	docker-compose up -d blockchain
-	docker-compose up setup
-	docker-compose rm --stop --force blockchain
