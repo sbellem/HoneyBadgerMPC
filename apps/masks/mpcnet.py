@@ -14,9 +14,9 @@ from apps.sharestore import LevelDB
 
 # from apps.utils import fetch_contract
 
-from honeybadgermpc.config import NodeDetails
-from honeybadgermpc.ipc import NodeCommunicator
-from honeybadgermpc.preprocessing import PreProcessedElements
+# from honeybadgermpc.config import NodeDetails
+
+# from honeybadgermpc.ipc import NodeCommunicator
 
 PARENT_DIR = Path(__file__).resolve().parent
 
@@ -43,23 +43,10 @@ def _create_w3(eth_config):
 
 
 class MPCNet:
-    def __init__(
-        self,
-        *,
-        servers=tuple(4 * [None]),
-        ncs=None,
-        preprocessors=tuple(4 * [None]),
-        http_servers=tuple(4 * [None]),
-        sub_tasks=tuple(4 * [None]),
-        mpcservers=tuple(4 * [None]),
-    ):
-        self.preprocessors = preprocessors
-        self.http_servers = http_servers
-        self.servers = servers
-        self.sub_tasks = sub_tasks
+    def __init__(self, *, ncs, mpcservers):
         self.mpcservers = mpcservers
-        pp_elements = PreProcessedElements()
-        pp_elements.clear_preprocessing()  # deletes sharedata/ if present
+        # pp_elements = PreProcessedElements()
+        # pp_elements.clear_preprocessing()  # deletes sharedata/ if present
 
     @classmethod
     async def from_toml_config(cls, config_path):
@@ -75,10 +62,10 @@ class MPCNet:
         base_config = {k: v for k, v in config.items() if k != "servers"}
 
         # For NodeCommunicator
-        node_details = {
-            i: NodeDetails(s["host"], s["dr_port"])
-            for i, s in enumerate(config["servers"])
-        }
+        # node_details = {
+        #    i: NodeDetails(s["host"], s["dr_port"])
+        #    for i, s in enumerate(config["servers"])
+        # }
         contract_context = _get_contract_context(config["eth"])
         w3 = _create_w3(config["eth"])
 
@@ -92,7 +79,23 @@ class MPCNet:
             myid = server_config["id"]
 
             # NodeCommunicator / zeromq sockets
-            nc = NodeCommunicator(node_details, i, 2)
+            # nc = NodeCommunicator(node_details, i, 2)
+            # await nc._setup()
+            # ncs.append(nc)
+            from honeybadgermpc.ipc import NodeCommunicator2
+
+            peers = [
+                {"id": s["id"], "host": s["host"], "port": s["dr_port"]}
+                for s in config["servers"]
+                if s["id"] != myid
+            ]
+            nc = NodeCommunicator2(
+                myid=myid,
+                host=config["servers"][myid]["host"],
+                port=config["servers"][myid]["dr_port"],
+                peers_config=peers,
+                linger_timeout=2,
+            )
             await nc._setup()
             ncs.append(nc)
 
@@ -116,20 +119,12 @@ class MPCNet:
             )
             mpcservers.append(mpcserver)
 
-        return cls(ncs=ncs, mpcservers=mpcservers,)
+        return cls(ncs=ncs, mpcservers=mpcservers)
 
     async def start(self):
-        for i, (preprocessor, http_server, server, mpcserver, sub_task) in enumerate(
-            zip(
-                self.preprocessors,
-                self.http_servers,
-                self.servers,
-                self.mpcservers,
-                self.sub_tasks,
-            )
-        ):
+        for i, mpcserver in enumerate(self.mpcservers):
             await mpcserver.start()
-            await self.ncs[i]._exit()
+            # await self.ncs[i]._exit()
 
 
 async def main(config_file):

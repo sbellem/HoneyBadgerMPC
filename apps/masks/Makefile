@@ -83,3 +83,11 @@ run-sim: down-sim rm-sim clean-sim ## run the example
 	docker-compose -f sim.yml up -d hbmpc.client.io
 	sh follow-sim-logs-with-tmux.sh
 
+run-mpcnet:
+	docker-compose -f sim.yml up -d eth.blockchain.io
+	docker-compose -f sim.yml up hbmpc.coordinator.io
+	docker-compose -f sim.yml up -d hbmpc.peer0.io
+	docker-compose -f sim.yml up -d hbmpc.peer1.io
+	docker-compose -f sim.yml up -d hbmpc.peer2.io
+	docker-compose -f sim.yml up -d hbmpc.peer3.io
+	sh follow-sim-logs-with-tmux.sh

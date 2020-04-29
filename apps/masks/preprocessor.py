@@ -70,15 +70,13 @@ class PreProcessor:
         self.myid = myid
         self.contract = contract
         self.w3 = w3
-        self._init_tasks()
+        self._preprocessing = _create_task(self._offline_inputmasks_loop())
         self.sharestore = sharestore
         self.get_send_recv = channel
 
-    def _init_tasks(self):
-        self._preprocessing = _create_task(self._offline_inputmasks_loop())
-
     async def start(self):
         await self._preprocessing
+        # await self._offline_inputmasks_loop()
 
     async def _preprocess_report(self, *, number_of_inputmasks):
         # Submit the preprocessing report
