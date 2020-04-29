@@ -18,7 +18,7 @@ rpc_port = 8545
 
 # contract
 # the contract file path can be relative or absolute
-contract_path = "contract.sol"
+contract_path = "~/.hbmpc/contract.sol"
 contract_name = "MpcCoordinator"
 public_data_dir = "public-data"
 

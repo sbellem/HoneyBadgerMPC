@@ -105,8 +105,8 @@ class MPCServer:
         self.http_server = self.httpserver_class(
             self.sid,
             self.myid,
-            http_host=self.http_context["host"],
-            http_port=self.http_context["port"],
+            host=self.http_context["host"],
+            port=self.http_context["port"],
             sharestore=self.sharestore,
         )
         self.mpc_prog_runner = self.mpcprogrunner_class(
@@ -129,7 +129,10 @@ async def main(
     session_id,
     myid,
     *,
-    node_communicator,
+    host,
+    mpc_port,
+    peers,
+    # node_communicator,
     w3,
     contract_context,
     sharestore,
@@ -138,7 +141,12 @@ async def main(
     httpserver_class,
     mpcprogrunner_class,
 ):
+    from honeybadgermpc.ipc import NodeCommunicator2
 
+    node_communicator = NodeCommunicator2(
+        myid=myid, host=host, port=mpc_port, peers_config=peers, linger_timeout=2
+    )
+    # await node_communicator._setup()
     async with node_communicator as nc:
         mpcserver = MPCServer(
             session_id,
@@ -154,6 +162,7 @@ async def main(
             mpcprogrunner_class=mpcprogrunner_class,
         )
         await mpcserver.start()
+    # await nc._exit()
 
 
 if __name__ == "__main__":
@@ -164,7 +173,8 @@ if __name__ == "__main__":
     import plyvel
     import toml
     from web3 import HTTPProvider, Web3
-    from honeybadgermpc.ipc import NodeCommunicator2
+
+    # from honeybadgermpc.ipc import NodeCommunicator2
     from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
     from apps.masks.httpserver import HTTPServer
     from apps.masks.mpcprogrunner import MPCProgRunner
@@ -334,9 +344,22 @@ if __name__ == "__main__":
         {"id": peer["id"], "host": peer["host"], "port": peer["mpc_port"]}
         for peer in config["peers"]
     )
-    node_communicator = NodeCommunicator2(
-        myid=myid, host=host, port=mpc_port, peers_config=peers, linger_timeout=2
-    )
+
+    # FIXME remove after what is the node below has been better understood
+    # NOTE leaving this temporarily as I would like to understand better why
+    # when the NodeCommunicator is instantiated here it stalls. More precisely,
+    # it will stall on processing the messages. It appears to block on the call
+    # to read the queue:
+    #
+    #       msg = await node_msg_queue.get()
+    #
+    # the above is in ipc.py, in the method _process_node_messages
+    #
+    # from honeybadgermpc.ipc import NodeCommunicator2
+    #
+    # node_communicator = NodeCommunicator2(
+    #    myid=myid, host=host, port=mpc_port, peers_config=peers, linger_timeout=2
+    # )
 
     # db
     db_path = Path(f"{args.db_path}").resolve()
@@ -365,7 +388,10 @@ if __name__ == "__main__":
         main(
             "sid",
             myid,
-            node_communicator=node_communicator,
+            host=host,
+            mpc_port=mpc_port,
+            peers=peers,
+            # node_communicator=node_communicator,
             w3=w3,
             contract_context=contract_context,
             sharestore=sharestore,

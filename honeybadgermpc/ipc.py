@@ -74,9 +74,11 @@ class NodeCommunicator:
                 self._sender_queues[i] = asyncio.Queue()
 
     def send(self, node_id, msg):
-        logging.info(f"Queuing {msg} to send to node id {node_id}")
+        logging.info(f"[NODE {self.myid}] Queuing {msg} to send to NODE {node_id}")
+        logging.info(f"[NODE {self.myid}] Queue before: {self.sender_queue[node_id]}")
         msg = (self.my_id, msg) if node_id == self.my_id else msg
         self._sender_queues[node_id].put_nowait(msg)
+        logging.info(f"[NODE {self.myid}] Queue after: {self.sender_queue[node_id]}")
 
     async def recv(self):
         return await self._receiver_queue.get()
@@ -200,14 +202,13 @@ class NodeCommunicator2:
             else:
                 self._sender_queues[i] = asyncio.Queue()
         self.already_setup = False
-        if setup:
-            self._setup()
-            self.already_setup = True
 
     def send(self, node_id, msg):
-        logging.info(f"Queuing {msg} to send to node id {node_id}")
+        logging.info(f"[NODE {self.myid}] Queuing {msg} to send to NODE {node_id}")
+        logging.info(f"[NODE {self.myid}] Queue before: {self._sender_queues[node_id]}")
         msg = (self.myid, msg) if node_id == self.myid else msg
         self._sender_queues[node_id].put_nowait(msg)
+        logging.info(f"[NODE {self.myid}] Queue after: {self._sender_queues[node_id]}")
 
     async def recv(self):
         return await self._receiver_queue.get()
@@ -234,6 +235,7 @@ class NodeCommunicator2:
         await self._exit()
 
     async def _setup(self):
+        logging.info(f"[NODE {self.myid}] setup ...")
         # Setup one router for a party, this acts as a
         # server for receiving messages from other parties.
         router = self.zmq_context.socket(ROUTER)
@@ -245,13 +247,20 @@ class NodeCommunicator2:
         # Setup one dealer per receving party. This is used
         # as a client to send messages to other parties.
         for peer in self.peers_config:
+            logging.info(
+                f"[NODE {self.myid}] setting dealer connection for peer {peer}"
+            )
             peer_id = peer["id"]
             dealer = self.zmq_context.socket(DEALER)
             # This identity is sent with each message. Setting it to myid, this is
             # used to appropriately route the message. This is not a good idea since
             # a node can pretend to send messages on behalf of other nodes.
             dealer.setsockopt(IDENTITY, str(self.myid).encode())
-            dealer.connect(f"tcp://{peer['host']}:{peer['port']}")
+            dealer_connection_url = f"tcp://{peer['host']}:{peer['port']}"
+            logging.info(
+                f"[NODE {self.myid}] setting up dealer connection to {dealer_connection_url}"
+            )
+            dealer.connect(dealer_connection_url)
             # Setup a task which reads messages intended for this
             # party from a queue and then sends them to this node.
             task = asyncio.create_task(
@@ -269,8 +278,17 @@ class NodeCommunicator2:
             self._receiver_queue.put_nowait((int(sender_id), msg))
 
     async def _process_node_messages(self, node_id, node_msg_queue, send_to_node):
+        logging.info(
+            f"[NODE {self.myid}] consuming messages to send to NODE {node_id} ..."
+        )
         while True:
+            logging.info(
+                f"[NODE {self.myid}] awaiting messages from queue {node_msg_queue}"
+            )
             msg = await node_msg_queue.get()
+            logging.info(
+                f"[NODE {self.myid}] consumed message queue of NODE {node_id}: {msg}"
+            )
             if msg is NodeCommunicator.LAST_MSG:
                 logging.info("No more messages to Node: %d can be sent.", node_id)
                 break

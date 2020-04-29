@@ -36,6 +36,7 @@ services:
         dockerfile: Dockerfile
     volumes:
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
+      - ../../apps/masks/contract.sol:/root/.hbmpc/contract.sol
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:

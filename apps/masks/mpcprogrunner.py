@@ -41,20 +41,22 @@ class MPCProgRunner:
         self.myid = myid
         self.contract = contract
         self.w3 = w3
-        self._init_tasks()
+        self._create_tasks()
         self.get_send_recv = channel
         self.sharestore = sharestore
 
-    def _init_tasks(self):
+    def _create_tasks(self):
         self._mpc = _create_task(self._mpc_loop())
         self._mpc_init = _create_task(self._mpc_initiate_loop())
 
-    async def join(self):
+    async def start(self):
         await self._mpc
         await self._mpc_init
-        # await self._subscribe_task
+        # await self._mpc_loop()
+        # await self._mpc_initiate_loop()
 
     async def _mpc_loop(self):
+        logging.info("MPC loop started ...")
         # Task 3. Participating in MPC epochs
         contract_concise = ConciseContract(self.contract)
         n = contract_concise.n()
@@ -62,9 +64,14 @@ class MPCProgRunner:
 
         epoch = 0
         while True:
+            logging.info(f"starting new loop at epoch: {epoch}")
             # 3.a. Wait for the next MPC to be initiated
             while True:
+                logging.info(f"waiting for epoch {epoch} to be initiated ...")
                 epochs_initiated = contract_concise.epochs_initiated()
+                logging.info(
+                    f"result of querying contract for epochs initiated: {epochs_initiated}"
+                )
                 if epochs_initiated > epoch:
                     break
                 await asyncio.sleep(5)
@@ -123,18 +130,25 @@ class MPCProgRunner:
             epoch += 1
 
     async def _mpc_initiate_loop(self):
+        logging.info("MPC initiator loop started ...")
         # Task 4. Initiate MPC epochs
         contract_concise = ConciseContract(self.contract)
         K = contract_concise.K()  # noqa: N806
+        epoch = None
         while True:
+            logging.info(f"looping to initiate MPC for epoch {epoch} ...")
             # Step 4.a. Wait until there are k values then call initiate_mpc
             while True:
+                logging.info(f"waiting loop for enough inputs ready ...")
+                logging.info("querying contract for inputs_ready()")
                 inputs_ready = contract_concise.inputs_ready()
+                logging.info(f"number of inputs ready: {inputs_ready}")
                 if inputs_ready >= K:
                     break
                 await asyncio.sleep(5)
 
             # Step 4.b. Call initiate_mpc
+            logging.info("call contract function initiate_mpc() ...")
             try:
                 tx_hash = self.contract.functions.initiate_mpc().transact(
                     {"from": self.w3.eth.accounts[0]}

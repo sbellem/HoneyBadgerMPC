@@ -171,7 +171,7 @@ class Client:
         shares = self._request_mask_shares(self.mpc_network, idx)
         shares = await asyncio.gather(*shares)
         logging.info(
-            f"{len(shares)} of input mask shares have"
+            f"{len(shares)} of input mask shares have "
             "been received from the MPC servers"
         )
         logging.info(
