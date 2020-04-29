@@ -46,7 +46,7 @@ class PreProcessor:
     """
 
     def __init__(
-        self, sid, myid, w3, *, contract=None, sharestore, channel=None,
+        self, sid, myid, w3, *, contract=None, db, channel=None,
     ):
         """
         Parameters
@@ -71,7 +71,7 @@ class PreProcessor:
         self.contract = contract
         self.w3 = w3
         self._preprocessing = _create_task(self._offline_inputmasks_loop())
-        self.sharestore = sharestore
+        self.db = db
         self.get_send_recv = channel
 
     async def start(self):
@@ -134,13 +134,13 @@ class PreProcessor:
             logging.info(f"len(rs_t): {len(rs_t)}")
             logging.info(f"rs_t: {rs_t}")
             try:
-                _inputmasks = self.sharestore[b"inputmasks"]
+                _inputmasks = self.db[b"inputmasks"]
             except KeyError:
                 inputmasks = []
             else:
                 inputmasks = pickle.loads(_inputmasks)
             inputmasks += rs_t
-            self.sharestore[b"inputmasks"] = pickle.dumps(inputmasks)
+            self.db[b"inputmasks"] = pickle.dumps(inputmasks)
 
             # Step 1. III) Submit an updated report
             await self._preprocess_report(number_of_inputmasks=len(inputmasks))

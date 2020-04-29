@@ -11,7 +11,7 @@ class HTTPServer:
     """HTTP server to handle requests from clients."""
 
     def __init__(
-        self, sid, myid, *, host="0.0.0.0", port=8080, sharestore,
+        self, sid, myid, *, host="0.0.0.0", port=8080, db,
     ):
         """
         Parameters
@@ -25,7 +25,7 @@ class HTTPServer:
         self.myid = myid
         self._host = host
         self._port = port
-        self.sharestore = sharestore
+        self.db = db
         self._http_server = _create_task(self._request_handler_loop())
 
     async def start(self):
@@ -45,7 +45,7 @@ class HTTPServer:
         async def _handler(request):
             idx = int(request.match_info.get("idx"))
             try:
-                _inputmasks = self.sharestore[b"inputmasks"]
+                _inputmasks = self.db[b"inputmasks"]
             except KeyError:
                 inputmasks = []
             else:

@@ -21,7 +21,7 @@ class MPCProgRunner:
     """
 
     def __init__(
-        self, sid, myid, w3, *, contract=None, sharestore=None, channel=None,
+        self, sid, myid, w3, *, contract=None, db=None, channel=None,
     ):
         """
         Parameters
@@ -43,7 +43,7 @@ class MPCProgRunner:
         self.w3 = w3
         self._create_tasks()
         self.get_send_recv = channel
-        self.sharestore = sharestore
+        self.db = db
 
     def _create_tasks(self):
         self._mpc = _create_task(self._mpc_loop())
@@ -84,7 +84,7 @@ class MPCProgRunner:
             masked_message = field(int.from_bytes(masked_message_bytes, "big"))
             logging.info(f"masked_message: {masked_message}")
             try:
-                _inputmasks = self.sharestore[b"inputmasks"]
+                _inputmasks = self.db[b"inputmasks"]
             except KeyError:
                 inputmasks = []
             else:

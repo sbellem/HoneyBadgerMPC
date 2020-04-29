@@ -55,7 +55,7 @@ class MPCServer:
         recv,
         w3,
         contract_context=None,
-        sharestore=None,
+        db=None,
         preprocessor_class=None,
         httpserver_class=None,
         mpcprogrunner_class=None,
@@ -86,7 +86,7 @@ class MPCServer:
         self.w3 = w3
         self.subscribe_task, self.channel = _get_pubsub_channel(send, recv)
         self.get_send_recv = self.channel
-        self.sharestore = sharestore
+        self.db = db
         self.preprocessor_class = preprocessor_class
         self.httpserver_class = httpserver_class
         self.http_context = http_context
@@ -99,7 +99,7 @@ class MPCServer:
             self.myid,
             self.w3,
             contract=self.contract,
-            sharestore=self.sharestore,
+            db=self.db,
             channel=self.channel,
         )
         self.http_server = self.httpserver_class(
@@ -107,14 +107,14 @@ class MPCServer:
             self.myid,
             host=self.http_context["host"],
             port=self.http_context["port"],
-            sharestore=self.sharestore,
+            db=self.db,
         )
         self.mpc_prog_runner = self.mpcprogrunner_class(
             self.sid,
             self.myid,
             self.w3,
             contract=self.contract,
-            sharestore=self.sharestore,
+            db=self.db,
             channel=self.channel,
         )
 
@@ -135,7 +135,7 @@ async def main(
     # node_communicator,
     w3,
     contract_context,
-    sharestore,
+    db,
     http_context,
     preprocessor_class,
     httpserver_class,
@@ -155,7 +155,7 @@ async def main(
             recv=nc.recv,
             w3=w3,
             contract_context=contract_context,
-            sharestore=sharestore,
+            db=db,
             http_context=http_context,
             preprocessor_class=preprocessor_class,
             httpserver_class=httpserver_class,
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     from apps.masks.httpserver import HTTPServer
     from apps.masks.mpcprogrunner import MPCProgRunner
     from apps.masks.preprocessor import PreProcessor
-    from apps.sharestore import LevelDB
+    from apps.db import LevelDB
     from apps.utils import get_contract_address
 
     PARENT_DIR = Path(__file__).resolve().parent
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     if args.reset_db:
         # NOTE: for testing purposes, we reset (destroy) the db before each run
         plyvel.destroy_db(str(db_path))
-    sharestore = LevelDB(db_path)  # use leveldb
+    db = LevelDB(db_path)  # use leveldb
 
     http_port = args.http_port or config["http_port"] or default_http_port
 
@@ -394,7 +394,7 @@ if __name__ == "__main__":
             # node_communicator=node_communicator,
             w3=w3,
             contract_context=contract_context,
-            sharestore=sharestore,
+            db=db,
             http_context={"host": host, "port": http_port},
             preprocessor_class=PreProcessor,
             httpserver_class=HTTPServer,
