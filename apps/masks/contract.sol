@@ -15,7 +15,7 @@ contract MpcCoordinator {
     address[] public servers;
     mapping (address => uint) public servermap;
 
-    constructor(address[] _servers, uint _t) public {
+    constructor(address[] memory _servers, uint _t) public {
 	    n = _servers.length;
 	    t  = _t;
 	    require(3*t < n);
@@ -57,7 +57,7 @@ contract MpcCoordinator {
         return a > b ? a : b;
     }
 
-    function preprocess_report(uint[1] rep) public {
+    function preprocess_report(uint[1] memory rep) public {
         // Update the Report 
         require(servermap[msg.sender] > 0);   // only valid servers
         uint id = servermap[msg.sender] - 1;
@@ -183,7 +183,7 @@ contract MpcCoordinator {
     uint[] public output_votes;
     mapping (uint => uint) public server_voted; // highest epoch voted in
 
-    function propose_output(uint epoch, string output) public {
+    function propose_output(uint epoch, string memory output) public {
         require(epoch < epochs_initiated);    // can't provide output if it hasn't been initiated
         require(servermap[msg.sender] > 0);   // only valid servers
         uint id = servermap[msg.sender] - 1;
@@ -194,7 +194,7 @@ contract MpcCoordinator {
         require(epoch <= server_voted[id]);
         server_voted[id] = max(epoch + 1, server_voted[id]);
 
-        bytes32 output_hash = sha3(output);
+        bytes32 output_hash = keccak256(abi.encode(output));
 
         if (output_votes[epoch] > 0) {
             // All the votes must match
