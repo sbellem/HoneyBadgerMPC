@@ -21,7 +21,7 @@ class MPCProgRunner:
     """
 
     def __init__(
-        self, sid, myid, w3, *, contract=None, db=None, channel=None,
+        self, sid, myid, w3, *, contract=None, db=None, channel=None, prog=None
     ):
         """
         Parameters
@@ -44,6 +44,7 @@ class MPCProgRunner:
         self._create_tasks()
         self.get_send_recv = channel
         self.db = db
+        self.prog = prog
 
     def _create_tasks(self):
         self._mpc = _create_task(self._mpc_loop())
@@ -97,20 +98,33 @@ class MPCProgRunner:
             msg_field_elem = masked_message - inputmask
 
             # 3.d. Call the MPC program
-            async def prog(ctx):
-                logging.info(f"[{ctx.myid}] Running MPC network")
-                msg_share = ctx.Share(msg_field_elem)
-                opened_value = await msg_share.open()
-                opened_value_bytes = opened_value.value.to_bytes(32, "big")
-                logging.info(f"opened_value in bytes: {opened_value_bytes}")
-                msg = opened_value_bytes.decode().strip("\x00")
-                return msg
+            # async def _prog(ctx, *, field_element):
+            #    logging.info(f"[{ctx.myid}] Running MPC network")
+            #    msg_share = ctx.Share(field_element)
+            #    opened_value = await msg_share.open()
+            #    opened_value_bytes = opened_value.value.to_bytes(32, "big")
+            #    logging.info(f"opened_value in bytes: {opened_value_bytes}")
+            #    msg = opened_value_bytes.decode().strip("\x00")
+            #    return msg
+            #
+            # prog = self.prog or _prog
 
             send, recv = self.get_send_recv(f"mpc:{epoch}")
             logging.info(f"[{self.myid}] MPC initiated:{epoch}")
 
             config = {}
-            ctx = Mpc(f"mpc:{epoch}", n, t, self.myid, send, recv, prog, config)
+            prog_kwargs = {"field_element": msg_field_elem}
+            ctx = Mpc(
+                f"mpc:{epoch}",
+                n,
+                t,
+                self.myid,
+                send,
+                recv,
+                self.prog,
+                config,
+                **prog_kwargs,
+            )
             result = await ctx._run()
             logging.info(f"[{self.myid}] MPC complete {result}")
 

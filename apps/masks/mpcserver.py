@@ -60,6 +60,7 @@ class MPCServer:
         httpserver_class=None,
         mpcprogrunner_class=None,
         http_context,
+        prog=None,
     ):
         """
         Parameters
@@ -91,6 +92,7 @@ class MPCServer:
         self.httpserver_class = httpserver_class
         self.http_context = http_context
         self.mpcprogrunner_class = mpcprogrunner_class
+        self.prog = prog
         self._init_tasks()
 
     def _init_tasks(self):
@@ -116,6 +118,7 @@ class MPCServer:
             contract=self.contract,
             db=self.db,
             channel=self.channel,
+            prog=self.prog,
         )
 
     async def start(self):
@@ -140,6 +143,7 @@ async def main(
     preprocessor_class,
     httpserver_class,
     mpcprogrunner_class,
+    prog=None,
 ):
     from honeybadgermpc.ipc import NodeCommunicator2
 
@@ -160,6 +164,7 @@ async def main(
             preprocessor_class=preprocessor_class,
             httpserver_class=httpserver_class,
             mpcprogrunner_class=mpcprogrunner_class,
+            prog=prog,
         )
         await mpcserver.start()
     # await nc._exit()
@@ -384,6 +389,22 @@ if __name__ == "__main__":
         "address": contract_address,
     }
 
+    ##########################################################################
+    #
+    # MPC program
+    #
+    # IDEA: will come from hbmpc aka ratel contract.
+    async def _prog(ctx, *, field_element):
+        logging.info(f"[{ctx.myid}] Running MPC network")
+        msg_share = ctx.Share(field_element)
+        opened_value = await msg_share.open()
+        opened_value_bytes = opened_value.value.to_bytes(32, "big")
+        logging.info(f"opened_value in bytes: {opened_value_bytes}")
+        msg = opened_value_bytes.decode().strip("\x00")
+        return msg
+
+    ##########################################################################
+
     asyncio.run(
         main(
             "sid",
@@ -399,5 +420,6 @@ if __name__ == "__main__":
             preprocessor_class=PreProcessor,
             httpserver_class=HTTPServer,
             mpcprogrunner_class=MPCProgRunner,
+            prog=_prog,
         )
     )
