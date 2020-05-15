@@ -1,8 +1,10 @@
-"""
-Original code was written by Harjasleen Malvai
-Volume Matching Auction : buy and sell orders are matched only on volume while price is determined by reference to some external market.
+# Original code was written by Harjasleen Malvai
 
 """
+In volume matching auction, buy and sell orders are matched only on volume
+while price is determined by reference to some external market.
+"""
+
 import asyncio
 import logging
 
@@ -24,28 +26,45 @@ config = {
 
 
 async def compute_bids(ctx, balances, bids, price):
-    """Compute all valid bids for each user. According to current market price, a bid becomes invalid
-    if the user doesn't have enough balance to pay for this bid. We only keep valid bids and classify
-    them into buy bids(volume > 0) and sell bids(volume < 0). Invalid bids will be discarded after the
-    execution of this function.
+    """Compute all valid bids for each user.
+    According to current market price, a bid becomes invalid
+    if the user doesn't have enough balance to pay for this bid.
+    We only keep valid bids and classify them into
+    buy bids(volume > 0) and sell bids(volume < 0).
+    Invalid bids will be discarded after executing this function.
 
-    :param balances: {address -> {cointype -> balance}}
-                     This is a dict where key is a string representing the address of user and value is
-                     a dict representing balances of different cointype of this user. Cointype is a string,
-                     which is be either 'eth' or 'erc20'. And balance is a FixedPoint number.
-    :param bids: [[address, volume]]
-                 This is a list of bids. Each bid is a list of two elements. The first element is the owner of
-                 this bid, which is a string. The second element the volume of this bid, which is a FixedPoint
-                 number. When volume is larger than zero, then this bid is a buy bid, which means the owner wants
-                 to buy 'volume' units of tokens with 'volume * price' units of ETH. When volume is less than zero,
-                 the bid is a sell bid, which means the owner wants to sell 'volume' units of tokens for 'volume * price'
-                 units of ETH.
-    :param price: FixedPoint
-                  In volume matching, price is determined by reference to some external lit market. Price is how much
-                  units of ETH have the same value as one unit of token.
-    :return: buys, sells
-             This function returns two lists of bids for buy and sell respectively. Since we have separated buy and
-             sell bids, now every bid has volume larger than zero.
+    Parameters
+    ----------
+    balances : {address -> {cointype -> balance}}
+        Address is a string representing
+        the public address of the user.
+        Cointype is a string.
+        Now we only support two cointypes, 'eth' and 'erc20'.
+        Balance is a FixedPoint number.
+    bids : [(address, volume)]
+        A list of bids.
+        Each bid is a list of two elements,
+        the address of the owner and the volume of this bid.
+        Address is a string and volume is a FixedPoint number.
+        When volume is larger than zero, this bid is a buy bid,
+        which means the owner wants to buy 'volume' units of tokens
+        with 'volume * price' units of ETH.
+        When volume is less than zero, the bid is a sell bid,
+        which means the owner wants to sell 'volume' units of tokens
+        for 'volume * price' units of ETH.
+    price : FixedPoint
+        In volume matching, price is determined by reference
+        to some external lit market. Price is how many units of ETH
+        have the same value as one unit of token.
+
+    Returns
+    -------
+    buys : [(address, volume)]
+        List of valid buy orders.
+    sells : [(address, volume)]
+        List of valid sell orders.
+        Since we have separated buy and sell bids,
+        now every sell bid has volume larger than zero.
     """
 
     one = ctx.Share(1)
@@ -62,7 +81,7 @@ async def compute_bids(ctx, balances, bids, price):
     buys = []
     sells = []
 
-    for i, bid in enumerate(bids):
+    for bid in bids:
         addr, vol = bid
 
         is_sell = await vol.ltz()
@@ -96,17 +115,36 @@ async def compute_bids(ctx, balances, bids, price):
 
 
 async def volume_matching(ctx, buys, sells):
-    """Given all valid buy and sell bids, this function run the volume matching algorithm,
-    where buy and sell bids are matched only on volume with no price information considered.
-    First we compute the amount to be matched, i.e., the smaller one between total buy volume
-    and total sell volume. Then we match for buy bids and sell bids respectively.
+    """Given all valid buy and sell bids,
+    this function runs the volume matching algorithm,
+    where buy and sell bids are matched only on volume
+    with no price information considered.
+    First we compute the total amount to be matched,
+    i.e., the smaller one between total buy volume
+    and total sell volume.
+    Then we match for buy bids and sell bids respectively.
+    After matching, each bid is split into matched and rest part.
+    This function returns four lists of bids,
+    where matched_buys + res_buys = buys and
+    matched_sells + res_sells = sells.
 
-    :param buys: list of valid buy bids
-    :param sells: list of valid sell bids
-    :return: matched_buys, matched_sells, res_buys, res_sells
-             After matching, each bid is split into matched and rest part. This function returns
-             four lists of bids, where matched_buys + res_buys = buys and
-             matched_sells + res_sells = sells.
+    Parameters
+    ----------
+    buys : [(address, volume)]
+        List of valid buy orders
+    sells : [(address, volume)]
+        List of valid sell orders
+
+    Returns
+    -------
+    matched_buys : [(address, volume)]
+        The matched part of each buy orders.
+    matched_sells : [(address, volume)]
+        The matched part of each sell orders.
+    res_buys : [(address, volume)]
+        The unmatched part of each buy orders.
+    res_sells : [(address, volume)]
+        The unmatched part of each sell orders.
     """
 
     zero = ctx.Share(0)
@@ -130,7 +168,7 @@ async def volume_matching(ctx, buys, sells):
 
     # match for sell bids
     rest_volume = matching_volume
-    for i, sell in enumerate(sells):
+    for sell in sells:
         addr, sell_vol = sell
 
         z1 = await fp_zero.lt(rest_volume)
@@ -148,7 +186,7 @@ async def volume_matching(ctx, buys, sells):
 
     # match for buy bids
     rest_volume = matching_volume
-    for i, buy in enumerate(buys):
+    for buy in buys:
         addr, buy_vol = buy
 
         z1 = await fp_zero.lt(rest_volume)
@@ -168,23 +206,32 @@ async def volume_matching(ctx, buys, sells):
 
 
 async def compute_new_balances(balances, matched_buys, matched_sells, price):
-    """
-    Update balances of each user after matching
+    """Update balances for each user after volume matching
 
-    :param balances: balances of users before matching
-    :param matched_buys: list of matched buy bids
-    :param matched_sells: list of matched sell bids
-    :param price: external price
-    :return: new balances after matching
+    Parameters
+    ----------
+    balances : {address -> {cointype -> balance}}
+        Balances of users before matching
+    matched_buys : [(address, volume)]
+        List of matched buy bids
+    matched_sells : [(address, volume)]
+        List of matched sell bids
+    price: FixedPoint
+        External market price
+
+    Returns
+    -------
+    balances : {address -> {cointype -> balance}}
+        Updated balances after matching
     """
 
-    for i, sell in enumerate(matched_sells):
+    for sell in matched_sells:
         addr, vol = sell
 
         balances[addr]["erc20"] = balances[addr]["erc20"] - vol
         balances[addr]["eth"] = balances[addr]["eth"] + (await vol.__mul__(price))
 
-    for i, buy in enumerate(matched_buys):
+    for buy in matched_buys:
         addr, vol = buy
 
         balances[addr]["eth"] = balances[addr]["eth"] - (await vol.__mul__(price))
