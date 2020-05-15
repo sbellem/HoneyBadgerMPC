@@ -61,7 +61,6 @@ coverage: ## check code coverage quickly with the default Python
 	pytest -v -n auto --cov=honeybadgermpc --cov-report term --cov-report html
 	$(BROWSER) htmlcov/index.html
 
-<<<<<<< HEAD
 docs-local: ## generate Sphinx HTML documentation, including API docs
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
@@ -69,18 +68,6 @@ docs-local: ## generate Sphinx HTML documentation, including API docs
 
 servedocs-local: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
-=======
-docs: ## generate Sphinx HTML documentation
-	docker-compose run --rm honeybadgermpc make -C docs clean
-	docker-compose run --rm honeybadgermpc make -C docs html O="-v -W --keep-going"
-	docker-compose -f docs.yml stop viewdocs
-	docker-compose -f docs.yml up -d viewdocs
-
-servedocs: docs ## compile the docs watching for changes
-	docker-compose -f docs.yml stop viewdocs
-	docker-compose -f docs.yml up -d viewdocs
-	$(BROWSER) index.html
->>>>>>> Use docker-compose to build & serve the docs
 
 docs: ## generate Sphinx HTML documentation
 	docker-compose --file docs.yml run --rm build make -C docs clean
