@@ -153,7 +153,7 @@ class MPCProgRunner:
             logging.info(f"looping to initiate MPC for epoch {epoch} ...")
             # Step 4.a. Wait until there are k values then call initiate_mpc
             while True:
-                logging.info(f"waiting loop for enough inputs ready ...")
+                logging.info("waiting loop for enough inputs ready ...")
                 logging.info("querying contract for inputs_ready()")
                 inputs_ready = contract_concise.inputs_ready()
                 logging.info(f"number of inputs ready: {inputs_ready}")
