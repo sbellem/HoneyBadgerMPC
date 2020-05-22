@@ -47,7 +47,8 @@ contract MpcCoordinator {
     // Report of preprocess buffer size from each server
     mapping ( uint => PreProcessCount ) public preprocess_reports;
 
-    event PreProcessUpdated();
+    // NOTE not sure if needed, commenting for now
+    // event PreProcessUpdated();
 
     function min(uint a, uint b) private pure returns (uint) {
         return a < b ? a : b;
@@ -70,9 +71,10 @@ contract MpcCoordinator {
         for (uint i = 1; i < n; i++) {
             mins.inputmasks = min(mins.inputmasks, preprocess_reports[i].inputmasks);
         }
-        if (preprocess.inputmasks < mins.inputmasks) {
-            emit PreProcessUpdated();
-        }
+        // NOTE not sure if needed, commenting for now
+        // if (preprocess.inputmasks < mins.inputmasks) {
+        //     emit PreProcessUpdated();
+        // }
         preprocess.inputmasks = mins.inputmasks;
     }
 
