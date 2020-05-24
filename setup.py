@@ -60,7 +60,7 @@ ETH_REQUIRES = [
     "bitcoin",
     "eth_tester",
     "ethereum",
-    "lark",
+    "lark-parser",
     "plyvel",
     "py-evm",
     "vyper",
