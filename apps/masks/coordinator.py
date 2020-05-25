@@ -30,13 +30,24 @@ def set_eth_addrs(config_dict, config_filepath):
 
 
 def deploy_contract(
-    w3, *, contract_name, contract_filepath, n=4, t=1, deployer_addr, mpc_addrs
+    w3,
+    *,
+    contract_name,
+    contract_filepath,
+    contract_lang,
+    compiler_kwargs=None,
+    n=4,
+    t=1,
+    deployer_addr,
+    mpc_addrs,
 ):
     contract_address, abi = create_and_deploy_contract(
         w3,
         deployer=deployer_addr,
         contract_name=contract_name,
         contract_filepath=contract_filepath,
+        contract_lang=contract_lang,
+        compiler_kwargs=compiler_kwargs,
         args=(mpc_addrs, t),
     )
     return contract_address
@@ -46,8 +57,8 @@ if __name__ == "__main__":
     # TODO figure out why logging does not show up in the output
     # NOTE appears to be a configuration issue with respect to the
     # level as `.warning()` works.
-    logger.info(f"Deploying contract ...")
-    print(f"Deploying contract ...")
+    logger.info("Deploying contract ...")
+    print("Deploying contract ...")
 
     # default_config_path = PARENT_DIR.joinpath("public-data/config.toml")
     default_config_path = Path.home().joinpath(".coordinator/config.toml")
@@ -95,6 +106,7 @@ if __name__ == "__main__":
     t = config["t"]
     contract_name = config["contract"]["name"]
     contract_path = Path(config["contract"]["path"]).expanduser()
+    contract_lang = config["contract"]["lang"]
     eth_rpc_hostname = config["eth"]["rpc_host"]
     eth_rpc_port = config["eth"]["rpc_port"]
     w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
@@ -107,10 +119,15 @@ if __name__ == "__main__":
         s["eth_address"] = mpc_addr
         mpc_addrs.append(mpc_addr)
 
+    if contract_lang == "vyper":
+        compiler_kwargs = {"output_formats": ("abi", "bytecode")}
+
     contract_address = deploy_contract(
         w3,
         contract_name=contract_name,
         contract_filepath=contract_path,
+        contract_lang=contract_lang,
+        compiler_kwargs=compiler_kwargs,
         n=n,
         t=t,
         deployer_addr=deployer_addr,

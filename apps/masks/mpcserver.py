@@ -314,6 +314,17 @@ if __name__ == "__main__":
             f"file, it will be set as {default_contract_name}."
         ),
     )
+    default_contract_lang = "vyper"
+    parser.add_argument(
+        "--contract-lang",
+        type=str,
+        help=(
+            "The ethereum coordinator contract language. "
+            "If it is not provided, the config file will be looked at. "
+            "If absent from the config file, it will be set to "
+            f"'{default_contract_lang}'."
+        ),
+    )
     args = parser.parse_args()
     config = toml.load(args.config_path)
     hbmpc_home = args.hbmpc_home or config.get("hbmpc_home", default_hbmpc_home)
@@ -383,10 +394,14 @@ if __name__ == "__main__":
         contract_address = get_contract_address(
             Path(hbmpc_home).joinpath("public/contract_address")
         )
+    contract_lang = args.contract_lang or config["contract"].get(
+        "lang", default_contract_lang
+    )
     contract_context = {
         "filepath": contract_path,
         "name": contract_name,
         "address": contract_address,
+        "lang": contract_lang,
     }
 
     ##########################################################################
