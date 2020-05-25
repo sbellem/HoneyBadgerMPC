@@ -15,18 +15,32 @@ struct InputQueue:
     queue: Input[500]
     size: uint256
 
+# FIXME A map may be enough.
+struct OutputHashes:
+    hashes: bytes32[100]
+    size: uint256
 
+
+# FIXME A map may be enough.
+struct OutputVotes:
+    votes: uint256[100]
+    size: uint256
+
+
+#####################################################################
+# events
+#####################################################################
 # NOTE not sure if needed, commenting for now
 # PreProcessUpdated: event({})
-InputMaskClaimed: event({_client: address, _inputmask_idx: uint256})
-MessageSubmitted: event({_idx: uint256, _inputmask_idx: uint256, _masked_input: bytes32})
-MpcEpochInitiated: event({_epoch: uint256})
+InputMaskClaimed: event({client: address, inputmask_idx: uint256})
+MessageSubmitted: event({idx: uint256, inputmask_idx: uint256, masked_input: bytes32})
+MpcEpochInitiated: event({epoch: uint256})
 
 # NOTE vyper does not allow dynamic arrays, so we have to set the maximum
 # expected length of the output. The output string can contain up through
 # the maximum number of characters. Meaning: x = string[100], x can be
 # 1 to 100 character long.
-MpcOutput: event({_epoch: uint256, _output: string[100]})
+MpcOutput: event({epoch: uint256, output: string[100]})
 
 # NOTE: Not sure if there's a way around this ... must
 # hardcode number of participants
@@ -38,7 +52,7 @@ servers: public(address[4])
 servermap: public(map(address, int128))
 
 # Consensus count (min of the player report counts)
-preprocess: public(PreProcessCount)
+_preprocess: PreProcessCount
 
 # How many of each have been reserved already
 preprocess_used: public(PreProcessCount)
@@ -50,7 +64,14 @@ preprocess_reports: public(map(int128, PreProcessCount))
 # maps each element of preprocess.inputmasks to the client (if any) that claims it
 inputmasks_claimed: public(map(uint256, address))
 inputmask_map: public(map(uint256, bool))   # Maps a mask
-input_queue: public(InputQueue)     # All inputs sent so far
+_input_queue: InputQueue     # All inputs sent so far
+
+inputs_unmasked: public(uint256)
+epochs_initiated: public(uint256)
+outputs_ready: public(uint256)
+output_hashes: public(OutputHashes)
+output_votes: public(OutputVotes)
+server_voted: public(map(int128, uint256))     # highest epoch voted in
 
 
 @public
@@ -68,12 +89,26 @@ def __init__(_servers: address[N], _t: uint256):
         self.servers[i] = _servers[i]
         self.servermap[_servers[i]] = i + 1   # servermap is off-by-one
 
+
 ##############################################################################
 # 1. Preprocessing Buffer (the MPC offline phase)                            #
 ##############################################################################
 @public
+def preprocess() -> uint256:
+    return self._preprocess.inputmasks
+
+
+@public
 def inputmasks_available() -> uint256:
-    return self.preprocess.inputmasks - self.preprocess_used.inputmasks
+    return self._preprocess.inputmasks - self.preprocess_used.inputmasks
+
+
+@public
+def input_queue(epoch: int128) -> Input:
+    # TODO clean up / simplify
+    _input: Input = self._input_queue.queue[epoch]
+    #return _input.inputmask, _input.inputmask_idx
+    return _input
 
 
 # TODO probably not needed as builtin min() is available
@@ -117,7 +152,7 @@ def preprocess_report(rep: uint256[1]):
     # if preprocess.inputmasks < mins.inputmasks:
     #     emit PreProcessUpdated()
 
-    self.preprocess.inputmasks = mins.inputmasks
+    self._preprocess.inputmasks = mins.inputmasks
 
 
 # ######################
@@ -132,7 +167,7 @@ def reserve_inputmask() -> uint256:
     Extension point: override this function to add custom token rules
     """
     # An unclaimed input mask must already be available
-    assert self.preprocess.inputmasks > self.preprocess_used.inputmasks
+    assert self._preprocess.inputmasks > self.preprocess_used.inputmasks
 
     # Acquire this input mask for msg.sender
     idx: uint256 = self.preprocess_used.inputmasks
@@ -176,11 +211,11 @@ def submit_message(inputmask_idx: uint256, masked_input: bytes32):
     # Extension point: add additional client authorizations,
     # e.g. prevent the client from submitting more than one message per mix
 
-    idx: uint256 = self.input_queue.size
-    self.input_queue.size += 1
+    idx: uint256 = self._input_queue.size
+    self._input_queue.size += 1
 
-    self.input_queue.queue[idx].masked_input = masked_input
-    self.input_queue.queue[idx].inputmask = inputmask_idx
+    self._input_queue.queue[idx].masked_input = masked_input
+    self._input_queue.queue[idx].inputmask = inputmask_idx
 
     # QUESTION: What is the purpose of this event?
     log.MessageSubmitted(idx, inputmask_idx, masked_input)
@@ -193,60 +228,58 @@ def submit_message(inputmask_idx: uint256, masked_input: bytes32):
 # 3. Initiate MPC Epochs
 # ######################
 
+_K: constant(uint256) = 1  # number of messages per epoch
+
+
+@public
+@constant
+def K() -> uint256:
+    return _K
+
 # TODO
-# uint public constant K = 1; // number of messages per epoch
-# 
-# # Step 3.a. Trigger MPC to start
-# uint public inputs_unmasked;
-# uint public epochs_initiated;
-# event MpcEpochInitiated(uint epoch);
-# 
-# function inputs_ready() public view returns(uint) {
-#     return input_queue.length - inputs_unmasked;
-# }
-# 
-# function initiate_mpc() public {
-#     // Must unmask eactly K values in each epoch
-#     require(input_queue.length >= inputs_unmasked + K);
-#     inputs_unmasked += K;
-#     emit MpcEpochInitiated(epochs_initiated);
-#     epochs_initiated += 1;
-#     output_votes.length = epochs_initiated;
-#     output_hashes.length = epochs_initiated;
-# }
-# 
-# # Step 3.b. Output reporting: the output is considered "approved" once
-# #           at least t+1 servers report it
-# 
-# uint public outputs_ready;
-# event MpcOutput(uint epoch, string output);
-# bytes32[] public output_hashes;
-# uint[] public output_votes;
-# mapping (uint => uint) public server_voted; // highest epoch voted in
-# 
-# function propose_output(uint epoch, string memory output) public {
-#     require(epoch < epochs_initiated);    // can't provide output if it hasn't been initiated
-#     require(servermap[msg.sender] > 0);   // only valid servers
-#     uint id = servermap[msg.sender] - 1;
-# 
-#     // Each server can only vote once per epoch
-#     // Hazard note: honest servers must vote in strict ascending order, or votes
-#     //              will be lost!
-#     require(epoch <= server_voted[id]);
-#     server_voted[id] = max(epoch + 1, server_voted[id]);
-# 
-#     bytes32 output_hash = keccak256(abi.encode(output));
-# 
-#     if (output_votes[epoch] > 0) {
-#         // All the votes must match
-#         require(output_hash == output_hashes[epoch]);
-#     } else {
-#         output_hashes[epoch] = output_hash;
-#     }
-# 
-#     output_votes[epoch] += 1;
-#     if (output_votes[epoch] == t + 1) {    // at least one honest node agrees
-#         emit MpcOutput(epoch, output);
-#         outputs_ready += 1;
-#     }
-# }
+# Step 3.a. Trigger MPC to start
+@public
+def inputs_ready() -> uint256:
+    return self._input_queue.size - self.inputs_unmasked
+
+
+@public
+def initiate_mpc():
+    # Must unmask eactly K values in each epoch
+    assert self._input_queue.size >= self.inputs_unmasked + _K
+    self.inputs_unmasked += _K
+    log.MpcEpochInitiated(self.epochs_initiated)
+    self.epochs_initiated += 1
+    # FIXME not sure this is needed as the size does not appear to be used, at
+    # least in the contract ... MUST check if needed by contract consumer(s).
+    self.output_votes.size = self.epochs_initiated
+    self.output_hashes.size = self.epochs_initiated
+
+
+# Step 3.b. Output reporting: the output is considered "approved" once
+#           at least t+1 servers report it
+
+@public
+def propose_output(epoch: uint256,  output: string[100]):
+    assert epoch < self.epochs_initiated    # can't provide output if it hasn't been initiated
+    assert self.servermap[msg.sender] > 0   # only valid servers
+    id: int128 = self.servermap[msg.sender] - 1
+
+    # Each server can only vote once per epoch
+    # Hazard note: honest servers must vote in strict ascending order, or votes
+    #              will be lost!
+    assert epoch <= self.server_voted[id]
+    self.server_voted[id] = max(epoch + 1, self.server_voted[id])
+
+    output_hash: bytes32 = keccak256(output)
+
+    if self.output_votes.votes[epoch] > 0:
+        # All the votes must match
+        assert output_hash == self.output_hashes.hashes[epoch]
+    else:
+        self.output_hashes.hashes[epoch] = output_hash
+
+    self.output_votes.votes[epoch] += 1
+    if self.output_votes.votes[epoch] == self.t + 1:   # at least one honest node agrees
+        log.MpcOutput(epoch, output)
+        self.outputs_ready += 1

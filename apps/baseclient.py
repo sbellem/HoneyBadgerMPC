@@ -227,8 +227,16 @@ class Client:
             inputmask_idx, masked_message_bytes
         ).transact({"from": self.w3.eth.accounts[0]})
         tx_receipt = await wait_for_receipt(self.w3, tx_hash)
+        rich_logs = self.contract.events.MessageSubmitted().processReceipt(tx_receipt)
+        if rich_logs:
+            idx = rich_logs[0]["args"]["idx"]
+            inputmask_idx = rich_logs[0]["args"]["inputmask_idx"]
+            masked_input = rich_logs[0]["args"]["masked_input"]
+        else:
+            raise ValueError
         logging.info(
-            f"masked message has been published to the "
-            f"public contract at address {self.contract.address}"
+            f"masked message {masked_input} has been published to the "
+            f"public contract at address {self.contract.address} "
+            f"and is queued at index {idx}"
         )
         logging.info(f"tx receipt hash is: {tx_receipt['transactionHash'].hex()}")

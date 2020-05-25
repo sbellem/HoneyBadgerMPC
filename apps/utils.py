@@ -1,9 +1,15 @@
 import asyncio
 import logging
 
-from ethereum.tools._solidity import compile_code as compile_source
+from ethereum.tools._solidity import compile_code as compile_solidity
+from vyper.compiler import compile_code as compile_vyper
 
 from web3.exceptions import TransactionNotFound
+
+SOLIDITY_LANG = "solidity"
+VYPER_LANG = "vyper"
+
+compilers = {SOLIDITY_LANG: compile_solidity, VYPER_LANG: compile_vyper}
 
 
 async def wait_for_receipt(w3, tx_hash):
@@ -18,7 +24,7 @@ async def wait_for_receipt(w3, tx_hash):
     return tx_receipt
 
 
-def compile_contract_source(filepath):
+def compile_contract_source(filepath, *, lang, **kwargs):
     """Compiles the contract located in given file path.
 
     filepath : str
@@ -26,11 +32,12 @@ def compile_contract_source(filepath):
     """
     with open(filepath, "r") as f:
         source = f.read()
-    return compile_source(source)
+
+    return compilers[lang](source, **kwargs)
 
 
 def get_contract_interface(*, contract_name, contract_filepath):
-    compiled_sol = compile_contract_source(contract_filepath)
+    compiled_sol = compile_contract_source(contract_filepath, lang="solidity")
     try:
         contract_interface = compiled_sol[f"<stdin>:{contract_name}"]
     except KeyError:
@@ -40,11 +47,17 @@ def get_contract_interface(*, contract_name, contract_filepath):
     return contract_interface
 
 
-def get_contract_abi(*, contract_name, contract_filepath):
-    ci = get_contract_interface(
-        contract_name=contract_name, contract_filepath=contract_filepath
-    )
-    return ci["abi"]
+def get_contract_abi(*, contract_name, contract_filepath, lang, **kwargs):
+    if lang == "solidity":
+        ci = get_contract_interface(
+            contract_name=contract_name, contract_filepath=contract_filepath
+        )
+        return ci["abi"]
+    elif lang == VYPER_LANG:
+        if "output_formats" not in kwargs:
+            kwargs["output_formats"] = ("abi",)
+        output = compile_contract_source(contract_filepath, lang=lang, **kwargs)
+        return output["abi"]
 
 
 def deploy_contract(w3, *, abi, bytecode, deployer, args=(), kwargs=None):
@@ -97,7 +110,15 @@ def deploy_contract(w3, *, abi, bytecode, deployer, args=(), kwargs=None):
 
 
 def create_and_deploy_contract(
-    w3, *, deployer, contract_name, contract_filepath, args=(), kwargs=None
+    w3,
+    *,
+    deployer,
+    contract_name,
+    contract_filepath,
+    contract_lang,
+    compiler_kwargs=None,
+    args=(),
+    kwargs=None,
 ):
     """Create and deploy the contract.
 
@@ -114,6 +135,8 @@ def create_and_deploy_contract(
         Name of the contract to be created.
     contract_filepath : str
         Path of the Solidity contract file.
+    contract_lang: str
+        Language of the contract. Must be 'vyper' or 'solidity'.
     args : tuple, optional
         Positional arguments to be passed to the contract constructor.
         Defaults to ``()``.
@@ -128,16 +151,21 @@ def create_and_deploy_contract(
     abi:
         Contract abi.
     """
-    compiled_sol = compile_contract_source(contract_filepath)
-    contract_interface = compiled_sol[f"<stdin>:{contract_name}"]
-    abi = contract_interface["abi"]
+    if compiler_kwargs is None:
+        compiler_kwargs = {}
+    compiled_code_output = compile_contract_source(
+        contract_filepath, lang=contract_lang, **compiler_kwargs
+    )
+    # TODO simplify
+    if contract_lang == SOLIDITY_LANG:
+        contract_interface = compiled_code_output[f"<stdin>:{contract_name}"]
+        abi = contract_interface["abi"]
+        bytecode = contract_interface["bin"]
+    elif contract_lang == VYPER_LANG:
+        abi = compiled_code_output["abi"]
+        bytecode = compiled_code_output["bytecode"]
     contract_address = deploy_contract(
-        w3,
-        abi=abi,
-        bytecode=contract_interface["bin"],
-        deployer=deployer,
-        args=args,
-        kwargs=kwargs,
+        w3, abi=abi, bytecode=bytecode, deployer=deployer, args=args, kwargs=kwargs,
     )
     return contract_address, abi
 
@@ -149,7 +177,7 @@ def get_contract_address(filepath):
     return contract_address
 
 
-def fetch_contract(w3, *, address, name, filepath):
+def fetch_contract(w3, *, address, name, filepath, lang="vyper"):
     """Fetch a contract using the given web3 connection, and contract
     attributes.
 
@@ -161,12 +189,15 @@ def fetch_contract(w3, *, address, name, filepath):
         Name of the contract.
     filepath : str
         File path to the source code of the contract.
+    lang: str
+        Language of the contract. Must be 'vyper' or 'solidity'.
+        Defaults to 'vyper'.
 
     Returns
     -------
     web3.contract.Contract
         The ``web3`` ``Contract`` object.
     """
-    abi = get_contract_abi(contract_name=name, contract_filepath=filepath)
+    abi = get_contract_abi(contract_name=name, contract_filepath=filepath, lang=lang)
     contract = w3.eth.contract(address=address, abi=abi)
     return contract
