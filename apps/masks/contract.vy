@@ -283,3 +283,14 @@ def propose_output(epoch: uint256,  output: string[100]):
     if self.output_votes.votes[epoch] == self.t + 1:   # at least one honest node agrees
         log.MpcOutput(epoch, output)
         self.outputs_ready += 1
+
+
+@mpc
+async def _prog(ctx, *, field_element):
+    logging.info(f"[{ctx.myid}] Running MPC network")
+    msg_share = ctx.Share(field_element)
+    opened_value = await msg_share.open()
+    opened_value_bytes = opened_value.value.to_bytes(32, "big")
+    logging.info(f"opened_value in bytes: {opened_value_bytes}")
+    msg = opened_value_bytes.decode().strip("\x00")
+    return msg

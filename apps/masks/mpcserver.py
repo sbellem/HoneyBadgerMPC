@@ -9,7 +9,7 @@ Also, the epoch count will be reset to 0 if a server restarts. Not clear
 what this may cause, besides the server attempting to unmask messages that
 have already been unmasked ...
 """
-from apps.utils import fetch_contract
+from apps.utils import compile_ratel_contract, fetch_contract
 
 from honeybadgermpc.utils.misc import _get_pubsub_channel
 
@@ -83,7 +83,14 @@ class MPCServer:
         self.sid = sid
         self.myid = myid
         self._contract_context = contract_context
-        self.contract = fetch_contract(w3, **contract_context)
+        output = compile_ratel_contract(
+            contract_context["filepath"], vyper_output_formats=("abi",)
+        )
+        vyper_output = output["vyper"]
+        # mpc_output = output["mpc"]
+        self.contract = fetch_contract(
+            w3, address=contract_context["address"], abi=vyper_output["abi"]
+        )
         self.w3 = w3
         self.subscribe_task, self.channel = _get_pubsub_channel(send, recv)
         self.get_send_recv = self.channel

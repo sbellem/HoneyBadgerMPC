@@ -63,7 +63,7 @@ ETH_REQUIRES = [
     "lark-parser",
     "plyvel",
     "py-evm",
-    "vyper",
+    "ratl @ git+https://github.com/ratelang/ratel.git",
     "web3",
 ]
 
