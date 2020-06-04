@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from ethereum.tools._solidity import compile_code as compile_solidity
+from ratl import RatelCompiler
 from vyper.compiler import compile_code as compile_vyper
 
 from web3.exceptions import TransactionNotFound
@@ -177,7 +178,7 @@ def get_contract_address(filepath):
     return contract_address
 
 
-def fetch_contract(w3, *, address, name, filepath, lang="vyper"):
+def fetch_contract(w3, *, address, abi=None, name=None, filepath=None, lang="vyper"):
     """Fetch a contract using the given web3 connection, and contract
     attributes.
 
@@ -185,10 +186,14 @@ def fetch_contract(w3, *, address, name, filepath, lang="vyper"):
     ----------
     address : str
         Ethereum address of the contract.
-    name : str
-        Name of the contract.
-    filepath : str
-        File path to the source code of the contract.
+    abi: dict (optional)
+        Contract ABI. Must be supplied if ``filepath`` is not provided.
+    name : str (optional)
+        Name of the contract. Must be provided if ``abi`` is not provided
+        and if ``lang`` is "solidity".
+    filepath : str (optional)
+        File path to the source code of the contract. Must be supplied if ``abi``
+        is not provided.
     lang: str
         Language of the contract. Must be 'vyper' or 'solidity'.
         Defaults to 'vyper'.
@@ -198,6 +203,18 @@ def fetch_contract(w3, *, address, name, filepath, lang="vyper"):
     web3.contract.Contract
         The ``web3`` ``Contract`` object.
     """
-    abi = get_contract_abi(contract_name=name, contract_filepath=filepath, lang=lang)
+    if not abi:
+        abi = get_contract_abi(
+            contract_name=name, contract_filepath=filepath, lang=lang
+        )
     contract = w3.eth.contract(address=address, abi=abi)
     return contract
+
+
+def compile_ratel_contract(filepath, *, vyper_output_formats=("abi", "bytecode")):
+    with open(filepath) as f:
+        contract_code = f.read()
+    ratel_compiler = RatelCompiler()
+    return ratel_compiler.compile(
+        contract_code, vyper_output_formats=vyper_output_formats
+    )
