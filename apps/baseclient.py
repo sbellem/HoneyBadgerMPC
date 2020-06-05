@@ -74,6 +74,7 @@ class Client:
             "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
             "filepath": Path(eth_config["contract_path"]).expanduser(),
             "name": eth_config["contract_name"],
+            "lang": eth_config["contract_lang"],
         }
 
         # web3
