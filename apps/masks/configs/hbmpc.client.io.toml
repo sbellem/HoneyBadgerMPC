@@ -19,8 +19,10 @@ rpc_port = 8545
 # contract
 #contract_path = "~/.hbmpc/contract.sol"
 #contract_lang = "solitdity"
-contract_path = "~/.hbmpc/contract.vy"
-contract_lang = "vyper"
+#contract_path = "~/.hbmpc/contract.vy"
+#contract_lang = "vyper"
+contract_path = "~/.hbmpc/contract.rl"
+contract_lang = "ratel"
 contract_name = "MpcCoordinator"
 public_data_dir = "public-data"
 

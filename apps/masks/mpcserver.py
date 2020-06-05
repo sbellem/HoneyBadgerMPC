@@ -60,7 +60,7 @@ class MPCServer:
         httpserver_class=None,
         mpcprogrunner_class=None,
         http_context,
-        prog=None,
+        # prog=None,
     ):
         """
         Parameters
@@ -86,8 +86,7 @@ class MPCServer:
         output = compile_ratel_contract(
             contract_context["filepath"], vyper_output_formats=("abi",)
         )
-        vyper_output = output["vyper"]
-        # mpc_output = output["mpc"]
+        vyper_output, mpc_output = output["vyper"], output["mpc"]
         self.contract = fetch_contract(
             w3, address=contract_context["address"], abi=vyper_output["abi"]
         )
@@ -99,7 +98,10 @@ class MPCServer:
         self.httpserver_class = httpserver_class
         self.http_context = http_context
         self.mpcprogrunner_class = mpcprogrunner_class
-        self.prog = prog
+
+        # NOTE "Load" MPC prog
+        exec(mpc_output["src_code"], globals())
+        self.prog = prog  # noqa F821
         self._init_tasks()
 
     def _init_tasks(self):
@@ -171,7 +173,7 @@ async def main(
             preprocessor_class=preprocessor_class,
             httpserver_class=httpserver_class,
             mpcprogrunner_class=mpcprogrunner_class,
-            prog=prog,
+            # prog=prog,
         )
         await mpcserver.start()
     # await nc._exit()
@@ -416,14 +418,14 @@ if __name__ == "__main__":
     # MPC program
     #
     # IDEA: will come from hbmpc aka ratel contract.
-    async def _prog(ctx, *, field_element):
-        logging.info(f"[{ctx.myid}] Running MPC network")
-        msg_share = ctx.Share(field_element)
-        opened_value = await msg_share.open()
-        opened_value_bytes = opened_value.value.to_bytes(32, "big")
-        logging.info(f"opened_value in bytes: {opened_value_bytes}")
-        msg = opened_value_bytes.decode().strip("\x00")
-        return msg
+    # async def _prog(ctx, *, field_element):
+    #    logging.info(f"[{ctx.myid}] Running MPC network")
+    #    msg_share = ctx.Share(field_element)
+    #    opened_value = await msg_share.open()
+    #    opened_value_bytes = opened_value.value.to_bytes(32, "big")
+    #    logging.info(f"opened_value in bytes: {opened_value_bytes}")
+    #    msg = opened_value_bytes.decode().strip("\x00")
+    #    return msg
 
     ##########################################################################
 
@@ -442,6 +444,6 @@ if __name__ == "__main__":
             preprocessor_class=PreProcessor,
             httpserver_class=HTTPServer,
             mpcprogrunner_class=MPCProgRunner,
-            prog=_prog,
+            # prog=_prog,
         )
     )

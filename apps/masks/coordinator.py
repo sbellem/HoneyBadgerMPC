@@ -121,6 +121,8 @@ if __name__ == "__main__":
 
     if contract_lang == "vyper":
         compiler_kwargs = {"output_formats": ("abi", "bytecode")}
+    else:
+        compiler_kwargs = {}
 
     contract_address = deploy_contract(
         w3,

@@ -23,8 +23,8 @@ rpc_port = 8545
 [contract]
 #path = "~/.hbmpc/contract.sol"
 #lang = "solitdity"
-path = "~/.hbmpc/contract.vy"
-lang = "vyper"
+path = "~/.hbmpc/contract.rl"
+lang = "ratel"
 name = "MpcCoordinator"
 
 # MPC peers 

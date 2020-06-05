@@ -8,9 +8,24 @@ from vyper.compiler import compile_code as compile_vyper
 from web3.exceptions import TransactionNotFound
 
 SOLIDITY_LANG = "solidity"
+RATEL_LANG = "ratel"
 VYPER_LANG = "vyper"
 
-compilers = {SOLIDITY_LANG: compile_solidity, VYPER_LANG: compile_vyper}
+
+def compile_ratel(
+    contract_source, *, vyper_output_formats=("abi", "bytecode"), **kwargs
+):
+    compiler = RatelCompiler()
+    return compiler.compile(
+        contract_source, vyper_output_formats=vyper_output_formats, **kwargs
+    )
+
+
+compilers = {
+    RATEL_LANG: compile_ratel,
+    SOLIDITY_LANG: compile_solidity,
+    VYPER_LANG: compile_vyper,
+}
 
 
 async def wait_for_receipt(w3, tx_hash):
@@ -59,6 +74,11 @@ def get_contract_abi(*, contract_name, contract_filepath, lang, **kwargs):
             kwargs["output_formats"] = ("abi",)
         output = compile_contract_source(contract_filepath, lang=lang, **kwargs)
         return output["abi"]
+    elif lang == RATEL_LANG:
+        if "vyper_output_formats" not in kwargs:
+            kwargs["vyper_output_formats"] = ("abi",)
+        output = compile_contract_source(contract_filepath, lang=lang, **kwargs)
+        return output["vyper"]["abi"]
 
 
 def deploy_contract(w3, *, abi, bytecode, deployer, args=(), kwargs=None):
@@ -165,9 +185,14 @@ def create_and_deploy_contract(
     elif contract_lang == VYPER_LANG:
         abi = compiled_code_output["abi"]
         bytecode = compiled_code_output["bytecode"]
+    elif contract_lang == RATEL_LANG:
+        abi = compiled_code_output["vyper"]["abi"]
+        bytecode = compiled_code_output["vyper"]["bytecode"]
+
     contract_address = deploy_contract(
         w3, abi=abi, bytecode=bytecode, deployer=deployer, args=args, kwargs=kwargs,
     )
+
     return contract_address, abi
 
 
