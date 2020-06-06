@@ -34,7 +34,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/mpcserver.py"]
   hbmpc.peer1.io:
     image: honeybadgermpc-local
     build:
@@ -49,7 +49,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/mpcserver.py"]
   hbmpc.peer2.io:
     image: honeybadgermpc-local
     build:
@@ -64,7 +64,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/mpcserver.py"]
   hbmpc.peer3.io:
     image: honeybadgermpc-local
     build:
@@ -79,16 +79,17 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/masks/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/mpcserver.py"]
   hbmpc.client.io:
     image: honeybadgermpc-local
     build:
         context: ../..
         dockerfile: Dockerfile
     volumes:
+      - ./configs/hbmpc.client.io.toml:/root/.hbmpc/config.toml
+      - ./contract.rl:/root/.hbmpc/contract.rl
+      - ./public-data:/root/.hbmpc/public
       - ../../apps:/usr/src/HoneyBadgerMPC/apps
-      - ../../apps/masks/configs/hbmpc.client.io.toml:/root/.hbmpc/config.toml
-      - ../../apps/masks/contract.rl:/root/.hbmpc/contract.rl
       - ../../honeybadgermpc:/usr/src/HoneyBadgerMPC/honeybadgermpc
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:

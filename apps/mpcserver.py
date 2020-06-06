@@ -35,14 +35,6 @@ def _create_w3(eth_config):
     return Web3(HTTPProvider(w3_endpoint_uri))
 
 
-class RPCServer:
-    """RPC server to handle requests from a client that is on the same host
-    as the MPC player.
-
-    Not sure if we need this ...
-    """
-
-
 class MPCServer:
     """MPC server class to ..."""
 
@@ -189,12 +181,12 @@ if __name__ == "__main__":
     from web3 import HTTPProvider, Web3
 
     # from honeybadgermpc.ipc import NodeCommunicator2
-    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
-    from apps.masks.httpserver import HTTPServer
-    from apps.masks.mpcprogrunner import MPCProgRunner
-    from apps.masks.preprocessor import PreProcessor
+    from apps.httpserver import HTTPServer
+    from apps.preprocessor import PreProcessor
     from apps.db import LevelDB
     from apps.utils import get_contract_address
+    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
+    from apps.masks.mpcprogrunner import MPCProgRunner
 
     PARENT_DIR = Path(__file__).resolve().parent
     # arg parsing

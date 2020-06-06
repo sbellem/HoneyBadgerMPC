@@ -13,7 +13,6 @@ import toml
 from web3 import HTTPProvider, Web3
 from web3.contract import ConciseContract
 
-from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
 from apps.utils import fetch_contract, get_contract_address, wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
@@ -71,7 +70,9 @@ class Client:
         eth_config = config["eth"]
         # contract
         contract_context = {
-            "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
+            "address": get_contract_address(
+                Path(eth_config["contract_address_path"]).expanduser()
+            ),
             "filepath": Path(eth_config["contract_path"]).expanduser(),
             "name": eth_config["contract_name"],
             "lang": eth_config["contract_lang"],
@@ -241,3 +242,34 @@ class Client:
             f"and is queued at index {idx}"
         )
         logging.info(f"tx receipt hash is: {tx_receipt['transactionHash'].hex()}")
+
+
+async def main(config_file):
+    from apps.baseclient import Client
+
+    client = Client.from_toml_config(config_file)
+    await client.join()
+
+
+if __name__ == "__main__":
+    import argparse
+    from pathlib import Path
+
+    PARENT_DIR = Path(__file__).resolve().parent
+
+    default_config_path = PARENT_DIR.joinpath("client.toml")
+    # default_client_home = Path.home().joinpath(".hbmpc")
+    # default_contract_address_path = default_client_home.joinpath(
+    #    "public/contract_address"
+    # )
+    parser = argparse.ArgumentParser(description="MPC client.")
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        default=str(default_config_path),
+        help=f"Configuration file to use. Defaults to '{default_config_path}'.",
+    )
+    args = parser.parse_args()
+
+    # Launch a client
+    asyncio.run(main(Path(args.config_file).expanduser()))
