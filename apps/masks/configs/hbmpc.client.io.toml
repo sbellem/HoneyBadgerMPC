@@ -24,6 +24,7 @@ rpc_port = 8545
 contract_path = "~/.hbmpc/contract.rl"
 contract_lang = "ratel"
 contract_name = "MpcCoordinator"
+contract_address_path = "~/.hbmpc/public/contract_address"
 public_data_dir = "public-data"
 
 # MPC servers

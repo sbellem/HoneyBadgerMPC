@@ -99,8 +99,8 @@ if __name__ == "__main__":
     coordinator_home = args.coordinator_home or config.get(
         "home", default_coordinator_home
     )
-    contract_address_path = args.contract_address_path or config.get(
-        "contract_address_path", default_contract_address_path
+    contract_address_path = args.contract_address_path or config["contract"].get(
+        "address_path", default_contract_address_path
     )
     n = config["n"]
     t = config["t"]
