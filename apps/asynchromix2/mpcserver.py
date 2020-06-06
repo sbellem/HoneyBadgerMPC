@@ -14,33 +14,25 @@ from apps.utils import compile_ratel_contract, fetch_contract
 from honeybadgermpc.utils.misc import _get_pubsub_channel
 
 
-def _get_contract_context(eth_config):
-    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
-    from apps.utils import get_contract_address
-
-    context = {
-        "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
-        "filepath": eth_config["contract_path"],
-        "name": eth_config["contract_name"],
-    }
-    return context
-
-
-def _create_w3(eth_config):
-    from web3 import HTTPProvider, Web3
-
-    eth_rpc_hostname = eth_config["rpc_host"]
-    eth_rpc_port = eth_config["rpc_port"]
-    w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
-    return Web3(HTTPProvider(w3_endpoint_uri))
-
-
-class RPCServer:
-    """RPC server to handle requests from a client that is on the same host
-    as the MPC player.
-
-    Not sure if we need this ...
-    """
+# def _get_contract_context(eth_config):
+#    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
+#    from apps.utils import get_contract_address
+#
+#    context = {
+#        "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
+#        "filepath": eth_config["contract_path"],
+#        "name": eth_config["contract_name"],
+#    }
+#    return context
+#
+#
+# def _create_w3(eth_config):
+#    from web3 import HTTPProvider, Web3
+#
+#    eth_rpc_hostname = eth_config["rpc_host"]
+#    eth_rpc_port = eth_config["rpc_port"]
+#    w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
+#    return Web3(HTTPProvider(w3_endpoint_uri))
 
 
 class MPCServer:
@@ -188,7 +180,6 @@ if __name__ == "__main__":
     import toml
     from web3 import HTTPProvider, Web3
 
-    # from honeybadgermpc.ipc import NodeCommunicator2
     from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
     from apps.masks.httpserver import HTTPServer
     from apps.masks.mpcprogrunner import MPCProgRunner
@@ -436,7 +427,6 @@ if __name__ == "__main__":
             host=host,
             mpc_port=mpc_port,
             peers=peers,
-            # node_communicator=node_communicator,
             w3=w3,
             contract_context=contract_context,
             db=db,

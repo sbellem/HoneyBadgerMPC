@@ -21,8 +21,6 @@ rpc_port = 8545
 # contract
 # the contract file path can be relative or absolute
 [contract]
-#path = "~/.hbmpc/contract.sol"
-#lang = "solitdity"
 path = "~/.hbmpc/contract.rl"
 lang = "ratel"
 name = "MpcCoordinator"
