@@ -4,8 +4,8 @@
 context = "."
 config_path = "~/.hbmpc/config.toml"
 
-id = 3
-host = "hbmpc.peer3.io"
+id = 2
+host = "hbmpc.peer2.io"
 http_port = 8080
 mpc_port = 7000
 
@@ -21,8 +21,6 @@ rpc_port = 8545
 # contract
 # the contract file path can be relative or absolute
 [contract]
-#path = "~/.hbmpc/contract.sol"
-#lang = "solitdity"
 path = "~/.hbmpc/contract.rl"
 lang = "ratel"
 name = "MpcCoordinator"
@@ -41,7 +39,7 @@ http_port = 8080
 mpc_port = 7000
 
 [[peers]]
-id = 2
-host = "hbmpc.peer2.io"
+id = 3
+host = "hbmpc.peer3.io"
 http_port = 8080
 mpc_port = 7000
