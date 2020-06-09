@@ -64,6 +64,7 @@ ETH_REQUIRES = [
     "plyvel",
     "py-evm",
     "ratl @ git+https://github.com/ratelang/ratel.git",
+    "pytest-ratl @ git+https://github.com/ratelang/pytest-ratl.git",
     "web3",
 ]
 

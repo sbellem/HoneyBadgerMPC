@@ -136,8 +136,7 @@ def _max(a: uint256, b: uint256) -> uint256:
 
 @public
 def preprocess_report(rep: uint256[1]):
-    #/ Update the Report 
-    #    require(servermap[msg.sender] > 0);   // only valid servers
+    # Update the Report
     assert self.servermap[msg.sender] > 0   # only valid servers
     id: int128 = self.servermap[msg.sender] - 1
     self.preprocess_reports[id].inputmasks = rep[0]

@@ -6,14 +6,14 @@ t = 1
 
 @pytest.fixture
 def contract_code():
-    with open("apps/masks/contract.vy") as f:
+    with open("apps/masks/contract.rl") as f:
         contract_code = f.read()
     return contract_code
 
 
 @pytest.fixture
-def contract(w3, get_contract, contract_code):
-    contract = get_contract(contract_code, w3.eth.accounts[:4], t)
+def contract(w3, get_ratl_contract, contract_code):
+    contract = get_ratl_contract(contract_code, w3.eth.accounts[:4], t)
     # contract = get_contract(contract_code, n, t)
     return contract
 
