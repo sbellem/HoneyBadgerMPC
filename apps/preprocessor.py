@@ -97,8 +97,9 @@ class PreProcessor:
         contract_concise = ConciseContract(self.contract)
         n = contract_concise.n()
         t = contract_concise.t()
+        K = contract_concise.K()  # noqa: N806
         preproc_round = 0
-        k = 1
+        k = K // (n - 2 * t) or 1  # batch size
         while True:
             logging.info(f"starting preprocessing round {preproc_round}")
             # Step 1. I) Wait until needed
@@ -109,7 +110,7 @@ class PreProcessor:
                 logging.info(f"available input masks: {inputmasks_available}")
                 logging.info(f"total input masks: {totalmasks}")
                 # Policy: try to maintain a buffer of 10 input masks
-                target = 10
+                target = 10 * K
                 if inputmasks_available < target:
                     break
                 # already have enough input masks, sleep
