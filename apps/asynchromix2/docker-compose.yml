@@ -36,7 +36,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/cli.py"]
 
   hbmpc.peer1.io:
     image: honeybadgermpc-local
@@ -52,7 +52,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/cli.py"]
 
   hbmpc.peer2.io:
     image: honeybadgermpc-local
@@ -68,7 +68,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/cli.py"]
 
   hbmpc.peer3.io:
     image: honeybadgermpc-local
@@ -84,7 +84,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/mpcserver.py"]
+    command: ["./apps/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/cli.py"]
 
   hbmpc.client.io:
     image: honeybadgermpc-local
