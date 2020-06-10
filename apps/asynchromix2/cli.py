@@ -10,7 +10,7 @@ if __name__ == "__main__":
     from apps.parsers import ServerArgumentParser
     from apps.masks.mpcprogrunner import MPCProgRunner
 
-    from .preprocessor import PreProcessor
+    from apps.asynchromix2.preprocessor import PreProcessor
 
     # arg parsing
     parser = ServerArgumentParser()
