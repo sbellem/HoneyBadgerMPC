@@ -62,6 +62,7 @@ class MPCProgRunner:
         contract_concise = ConciseContract(self.contract)
         n = contract_concise.n()
         t = contract_concise.t()
+        K = contract_concise.K()  # noqa: N806
 
         epoch = 0
         while True:
@@ -78,36 +79,25 @@ class MPCProgRunner:
                 await asyncio.sleep(5)
 
             # 3.b. Collect the input
-            # Get the public input (masked message)
-            masked_message_bytes, inputmask_idx = contract_concise.input_queue(epoch)
-            logging.info(f"masked_message_bytes: {masked_message_bytes}")
-            logging.info(f"inputmask_idx: {inputmask_idx}")
-            masked_message = field(int.from_bytes(masked_message_bytes, "big"))
-            logging.info(f"masked_message: {masked_message}")
-            try:
-                _inputmasks = self.db[b"inputmasks"]
-            except KeyError:
-                inputmasks = []
-            else:
-                inputmasks = pickle.loads(_inputmasks)
-            try:
-                inputmask = inputmasks[inputmask_idx]  # Get the input mask
-            except IndexError:
-                logging.error(f"No input mask at index {inputmask_idx}")
-                raise
-            msg_field_elem = masked_message - inputmask
-
-            # 3.d. Call the MPC program
-            # async def _prog(ctx, *, field_element):
-            #    logging.info(f"[{ctx.myid}] Running MPC network")
-            #    msg_share = ctx.Share(field_element)
-            #    opened_value = await msg_share.open()
-            #    opened_value_bytes = opened_value.value.to_bytes(32, "big")
-            #    logging.info(f"opened_value in bytes: {opened_value_bytes}")
-            #    msg = opened_value_bytes.decode().strip("\x00")
-            #    return msg
-            #
-            # prog = self.prog or _prog
+            for idx in range(epoch * K, (epoch + 1) * K):
+                # Get the public input (masked message)
+                masked_message_bytes, inputmask_idx = contract_concise.input_queue(idx)
+                logging.info(f"masked_message_bytes: {masked_message_bytes}")
+                logging.info(f"inputmask_idx: {inputmask_idx}")
+                masked_message = field(int.from_bytes(masked_message_bytes, "big"))
+                logging.info(f"masked_message: {masked_message}")
+                try:
+                    _inputmasks = self.db[b"inputmasks"]
+                except KeyError:
+                    inputmasks = []
+                else:
+                    inputmasks = pickle.loads(_inputmasks)
+                try:
+                    inputmask = inputmasks[inputmask_idx]  # Get the input mask
+                except IndexError:
+                    logging.error(f"No input mask at index {inputmask_idx}")
+                    raise
+                msg_field_elem = masked_message - inputmask
 
             send, recv = self.get_send_recv(f"mpc:{epoch}")
             logging.info(f"[{self.myid}] MPC initiated:{epoch}")

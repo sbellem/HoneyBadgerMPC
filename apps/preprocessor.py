@@ -73,16 +73,28 @@ class PreProcessor:
         self._preprocessing = _create_task(self._offline_inputmasks_loop())
         self.db = db
         self.get_send_recv = channel
+        self.elements = {}  # cache of elements (inputmasks, triples, bits, etc)
+        self._init_elements("inputmasks")
+
+    def _init_elements(self, *element_names):
+        for element_name in element_names:
+            try:
+                _element_set = self.db[element_name.encode()]
+            except KeyError:
+                element_set = []
+            else:
+                element_set = pickle.loads(_element_set)
+            self.elements[element_name] = element_set
 
     async def start(self):
         await self._preprocessing
         # await self._offline_inputmasks_loop()
 
-    async def _preprocess_report(self, *, number_of_inputmasks):
+    async def _preprocess_report(self):
         # Submit the preprocessing report
         logging.info(f"node {self.myid} submitting preprocessing report")
         tx_hash = self.contract.functions.preprocess_report(
-            [number_of_inputmasks]
+            [len(e) for e in self.elements.values()]
         ).transact({"from": self.w3.eth.accounts[self.myid]})
 
         # Wait for the tx receipt
@@ -134,17 +146,11 @@ class PreProcessor:
             logging.info(f"[{self.myid}] Randousha finished in {end_time-start_time}")
             logging.info(f"len(rs_t): {len(rs_t)}")
             logging.info(f"rs_t: {rs_t}")
-            try:
-                _inputmasks = self.db[b"inputmasks"]
-            except KeyError:
-                inputmasks = []
-            else:
-                inputmasks = pickle.loads(_inputmasks)
-            inputmasks += rs_t
-            self.db[b"inputmasks"] = pickle.dumps(inputmasks)
+            self.elements["inputmasks"] += rs_t
+            self.db[b"inputmasks"] = pickle.dumps(self.elements["inputmasks"])
 
             # Step 1. III) Submit an updated report
-            await self._preprocess_report(number_of_inputmasks=len(inputmasks))
+            await self._preprocess_report()
 
             # Increment the preprocessing round and continue
             preproc_round += 1

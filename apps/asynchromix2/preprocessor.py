@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import pickle
 import time
 
 from web3.contract import ConciseContract
@@ -13,10 +14,12 @@ from honeybadgermpc.utils.misc import _create_task
 class PreProcessor(_PreProcessor):
     def __init__(self, sid, myid, w3, *, contract=None, db, channel=None):
         super().__init__(sid, myid, w3, contract=contract, db=db, channel=channel)
-        self._mixes_task = _create_task(self._offline_mixes_loop())
+        self._init_elements("triples", "bits")
+        self._offline_mixes_task = _create_task(self._offline_mixes_loop())
 
     async def start(self):
         await super().start()
+        await self._offline_mixes_task
 
     async def _offline_mixes_loop(self):
         contract_concise = ConciseContract(self.contract)
@@ -66,8 +69,10 @@ class PreProcessor(_PreProcessor):
             logging.info(f"[{self.myid}] Bits finished in {end_time-start_time}")
 
             # Append each triple
-            self._triples += triples
-            self._bits += bits
+            self.elements["triples"] += triples
+            self.elements["bits"] += bits
+            self.db[b"triples"] = pickle.dumps(triples)
+            self.db[b"bits"] = pickle.dumps(bits)
 
             # Step 1a. III) Submit an updated report
             # TODO parametrize generic method in apps/preprocessor.py
