@@ -227,7 +227,7 @@ def submit_message(inputmask_idx: uint256, masked_input: bytes32):
 # 3. Initiate MPC Epochs
 # ######################
 
-_K: constant(uint256) = 1  # number of messages per epoch
+_K: constant(uint256) = 32  # number of messages per epoch
 
 
 @public

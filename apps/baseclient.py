@@ -117,14 +117,14 @@ class Client:
     async def _run(self):
         contract_concise = ConciseContract(self.contract)
         # Client sends several batches of messages then quits
-        # for epoch in range(1000):
-        for epoch in range(3):
+        for epoch in range(10):
             logging.info(f"[Client] Starting Epoch {epoch}")
             receipts = []
-            m = f"Hello! (Client Epoch: {epoch})"
-            task = asyncio.ensure_future(self.send_message(m))
-            task.add_done_callback(print_exception_callback)
-            receipts.append(task)
+            for i in range(32):
+                m = f"Hello! (Client Epoch: {epoch})"
+                task = asyncio.ensure_future(self.send_message(m))
+                task.add_done_callback(print_exception_callback)
+                receipts.append(task)
             receipts = await asyncio.gather(*receipts)
 
             while True:  # wait before sending next

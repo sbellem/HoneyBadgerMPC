@@ -1,5 +1,7 @@
 struct PreProcessCount:
     inputmasks: uint256     # [r]
+    triples: uint256        # [a],[b],[ab]
+    bits: uint256           # [b] with b in {-1,1}
 
 struct Input:
     masked_input: bytes32   # (m+r)
@@ -135,24 +137,34 @@ def _max(a: uint256, b: uint256) -> uint256:
 
 
 @public
-def preprocess_report(rep: uint256[1]):
-    #/ Update the Report 
-    #    require(servermap[msg.sender] > 0);   // only valid servers
+def preprocess_report(rep: uint256[3]):
+    # Update the Report
     assert self.servermap[msg.sender] > 0   # only valid servers
     id: int128 = self.servermap[msg.sender] - 1
     self.preprocess_reports[id].inputmasks = rep[0]
+    self.preprocess_reports[id].triples = rep[1]
+    self.preprocess_reports[id].bits = rep[2]
 
     # Update the consensus
-    mins: PreProcessCount = PreProcessCount({inputmasks: 0})
-    mins.inputmasks = self.preprocess_reports[0].inputmasks
+    mins: PreProcessCount = PreProcessCount({
+        inputmasks: self.preprocess_reports[0].inputmasks,
+        triples: self.preprocess_reports[0].triples,
+        bits: self.preprocess_reports[0].bits,
+    })
     for i in range(1, N):
         mins.inputmasks = min(mins.inputmasks, self.preprocess_reports[i].inputmasks)
+        mins.triples = min(mins.triples, self.preprocess_reports[i].triples)
+        mins.bits = min(mins.bits, self.preprocess_reports[i].bits)
 
     # NOTE not sure if needed, commenting for now
-    # if preprocess.inputmasks < mins.inputmasks:
+    # if (self._preprocess.inputmasks < mins.inputmasks or
+    #     self._preprocess.triples < mins.triples or
+    #     self._preprocess.bits < mins.bits):
     #     emit PreProcessUpdated()
 
     self._preprocess.inputmasks = mins.inputmasks
+    self._preprocess.triples = mins.triples
+    self._preprocess.bits = mins.bits
 
 
 # ######################
@@ -228,15 +240,37 @@ def submit_message(inputmask_idx: uint256, masked_input: bytes32):
 # 3. Initiate MPC Epochs
 # ######################
 
-_K: constant(uint256) = 1  # number of messages per epoch
-
+# Preprocessing requirements
+_K: constant(uint256) = 32  # mix size
+_PER_MIX_TRIPLES: constant(uint256) = (_K / 2) * 5 * 5   # k log^2 k
+_PER_MIX_BITS: constant(uint256) = (_K / 2) * 5 * 5
 
 @public
 @constant
 def K() -> uint256:
     return _K
 
-# TODO
+
+@public
+@constant
+def PER_MIX_TRIPLES() -> uint256:
+    return _PER_MIX_TRIPLES
+
+
+@public
+@constant
+def PER_MIX_BITS() -> uint256:
+    return _PER_MIX_BITS
+
+
+# Return the maximum number of mixes that can be run with the
+# available preprocessing
+@public
+def mixes_available() -> uint256:
+    triples_available: uint256 = self._preprocess.triples - self.preprocess_used.triples
+    bits_available: uint256 = self._preprocess.bits - self.preprocess_used.bits
+    return min(triples_available / _PER_MIX_TRIPLES, bits_available / _PER_MIX_BITS)
+
 # Step 3.a. Trigger MPC to start
 @public
 def inputs_ready() -> uint256:
