@@ -92,10 +92,12 @@ class PreProcessor:
 
     async def _preprocess_report(self):
         # Submit the preprocessing report
-        logging.info(f"node {self.myid} submitting preprocessing report")
-        tx_hash = self.contract.functions.preprocess_report(
-            [len(e) for e in self.elements.values()]
-        ).transact({"from": self.w3.eth.accounts[self.myid]})
+        logging.info(f"node {self.myid} submitting preprocessing report ...")
+        report = [len(e) for e in self.elements.values()]
+        logging.info(f"report for elements: {tuple(self.elements.keys())} is: {report}")
+        tx_hash = self.contract.functions.preprocess_report(report).transact(
+            {"from": self.w3.eth.accounts[self.myid]}
+        )
 
         # Wait for the tx receipt
         logging.info(f"node {self.myid} waiting for preprocessing report receipt")
