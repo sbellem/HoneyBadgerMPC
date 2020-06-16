@@ -204,11 +204,13 @@ class NodeCommunicator2:
         self.already_setup = False
 
     def send(self, node_id, msg):
-        logging.info(f"[NODE {self.myid}] Queuing {msg} to send to NODE {node_id}")
-        logging.info(f"[NODE {self.myid}] Queue before: {self._sender_queues[node_id]}")
+        logging.debug(f"[NODE {self.myid}] Queuing {msg} to send to NODE {node_id}")
+        logging.debug(
+            f"[NODE {self.myid}] Queue before: {self._sender_queues[node_id]}"
+        )
         msg = (self.myid, msg) if node_id == self.myid else msg
         self._sender_queues[node_id].put_nowait(msg)
-        logging.info(f"[NODE {self.myid}] Queue after: {self._sender_queues[node_id]}")
+        logging.debug(f"[NODE {self.myid}] Queue after: {self._sender_queues[node_id]}")
 
     async def recv(self):
         return await self._receiver_queue.get()
@@ -274,7 +276,7 @@ class NodeCommunicator2:
         while True:
             sender_id, raw_msg = await router.recv_multipart()
             msg = loads(raw_msg)
-            logging.info("[RECV] FROM: %s, MSG: %s,", sender_id, msg)
+            logging.debug("[RECV] FROM: %s, MSG: %s,", sender_id, msg)
             self._receiver_queue.put_nowait((int(sender_id), msg))
 
     async def _process_node_messages(self, node_id, node_msg_queue, send_to_node):
@@ -282,11 +284,11 @@ class NodeCommunicator2:
             f"[NODE {self.myid}] consuming messages to send to NODE {node_id} ..."
         )
         while True:
-            logging.info(
+            logging.debug(
                 f"[NODE {self.myid}] awaiting messages from queue {node_msg_queue}"
             )
             msg = await node_msg_queue.get()
-            logging.info(
+            logging.debug(
                 f"[NODE {self.myid}] consumed message queue of NODE {node_id}: {msg}"
             )
             if msg is NodeCommunicator.LAST_MSG:
@@ -294,7 +296,7 @@ class NodeCommunicator2:
                 break
             raw_msg = dumps(msg)
             self.bytes_sent += len(raw_msg)
-            logging.info("[SEND] TO: %d, MSG: %s", node_id, msg)
+            logging.debug("[SEND] TO: %d, MSG: %s", node_id, msg)
             await send_to_node([raw_msg])
 
 

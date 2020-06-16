@@ -58,62 +58,6 @@ class Client:
         self._task = asyncio.create_task(self._run())
         self._task.add_done_callback(print_exception_callback)
 
-    @classmethod
-    def from_dict_config(cls, config):
-        """Create a ``Client`` class instance from a config dict.
-
-        Parameters
-        ----------
-        config : dict
-            The configuration to create the ``Client`` instance.
-        """
-        eth_config = config["eth"]
-        # contract
-        contract_context = {
-            "address": get_contract_address(
-                Path(eth_config["contract_address_path"]).expanduser()
-            ),
-            "filepath": Path(eth_config["contract_path"]).expanduser(),
-            "name": eth_config["contract_name"],
-            "lang": eth_config["contract_lang"],
-        }
-
-        # web3
-        eth_rpc_hostname = eth_config["rpc_host"]
-        eth_rpc_port = eth_config["rpc_port"]
-        w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
-        w3 = Web3(HTTPProvider(w3_endpoint_uri))
-
-        # mpc network
-        mpc_network = config["servers"]
-
-        return cls(
-            config["session_id"],
-            config["id"],
-            w3,
-            None,  # TODO remove or pass callable for GET /inputmasks/{id}
-            contract_context=contract_context,
-            mpc_network=mpc_network,
-        )
-
-    @classmethod
-    def from_toml_config(cls, config_path):
-        """Create a ``Client`` class instance from a config TOML file.
-
-        Parameters
-        ----------
-        config_path : str
-            The path to the TOML configuration file to create the
-            ``Client`` instance.
-        """
-        config = toml.load(config_path)
-        # TODO extract resolving of relative path into utils
-        # context_path = Path(config_path).resolve().parent.joinpath(config["context"])
-        config["eth"]["contract_path"] = Path(
-            config["eth"]["contract_path"]
-        ).expanduser()
-        return cls.from_dict_config(config)
-
     async def _run(self):
         contract_concise = ConciseContract(self.contract)
         # Client sends several batches of messages then quits
@@ -121,7 +65,7 @@ class Client:
             logging.info(f"[Client] Starting Epoch {epoch}")
             receipts = []
             for i in range(32):
-                m = f"Hello! (Client Epoch: {epoch})"
+                m = f"Hello! (Client Epoch: {epoch}:{i})"
                 task = asyncio.ensure_future(self.send_message(m))
                 task.add_done_callback(print_exception_callback)
                 receipts.append(task)
@@ -242,6 +186,62 @@ class Client:
             f"and is queued at index {idx}"
         )
         logging.info(f"tx receipt hash is: {tx_receipt['transactionHash'].hex()}")
+
+    @classmethod
+    def from_dict_config(cls, config):
+        """Create a ``Client`` class instance from a config dict.
+
+        Parameters
+        ----------
+        config : dict
+            The configuration to create the ``Client`` instance.
+        """
+        eth_config = config["eth"]
+        # contract
+        contract_context = {
+            "address": get_contract_address(
+                Path(eth_config["contract_address_path"]).expanduser()
+            ),
+            "filepath": Path(eth_config["contract_path"]).expanduser(),
+            "name": eth_config["contract_name"],
+            "lang": eth_config["contract_lang"],
+        }
+
+        # web3
+        eth_rpc_hostname = eth_config["rpc_host"]
+        eth_rpc_port = eth_config["rpc_port"]
+        w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
+        w3 = Web3(HTTPProvider(w3_endpoint_uri))
+
+        # mpc network
+        mpc_network = config["servers"]
+
+        return cls(
+            config["session_id"],
+            config["id"],
+            w3,
+            None,  # TODO remove or pass callable for GET /inputmasks/{id}
+            contract_context=contract_context,
+            mpc_network=mpc_network,
+        )
+
+    @classmethod
+    def from_toml_config(cls, config_path):
+        """Create a ``Client`` class instance from a config TOML file.
+
+        Parameters
+        ----------
+        config_path : str
+            The path to the TOML configuration file to create the
+            ``Client`` instance.
+        """
+        config = toml.load(config_path)
+        # TODO extract resolving of relative path into utils
+        # context_path = Path(config_path).resolve().parent.joinpath(config["context"])
+        config["eth"]["contract_path"] = Path(
+            config["eth"]["contract_path"]
+        ).expanduser()
+        return cls.from_dict_config(config)
 
 
 async def main(config_file):

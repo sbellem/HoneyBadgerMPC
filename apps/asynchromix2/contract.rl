@@ -40,9 +40,9 @@ MpcEpochInitiated: event({epoch: uint256})
 
 # NOTE vyper does not allow dynamic arrays, so we have to set the maximum
 # expected length of the output. The output string can contain up through
-# the maximum number of characters. Meaning: x = string[100], x can be
-# 1 to 100 character long.
-MpcOutput: event({epoch: uint256, output: string[100]})
+# the maximum number of characters. Meaning: x = string[1000], x can be
+# 1 to 1000 character long.
+MpcOutput: event({epoch: uint256, output: string[1000]})
 
 # NOTE: Not sure if there's a way around this ... must
 # hardcode number of participants
@@ -60,7 +60,6 @@ _preprocess: PreProcessCount
 preprocess_used: public(PreProcessCount)
 
 # Report of preprocess buffer size from each server
-# mapping ( uint => PreProcessCount ) public preprocess_reports;
 preprocess_reports: public(map(int128, PreProcessCount))
 
 # maps each element of preprocess.inputmasks to the client (if any) that claims it
@@ -106,34 +105,11 @@ def inputmasks_available() -> uint256:
 
 
 @public
-def input_queue(epoch: int128) -> Input:
+def input_queue(idx: int128) -> Input:
     # TODO clean up / simplify
-    _input: Input = self._input_queue.queue[epoch]
+    _input: Input = self._input_queue.queue[idx]
     #return _input.inputmask, _input.inputmask_idx
     return _input
-
-
-# TODO probably not needed as builtin min() is available
-# also, notice that the name is not min() as this will cause a
-# compilation error because min() is a built in.
-@private
-@constant
-def _min(a: uint256, b: uint256) -> uint256:
-    if a < b:
-        return a
-    else:
-        return b
-
-
-# TODO probably not needed as builtin max() is available
-# see more details at _min() commments
-@private
-@constant
-def _max(a: uint256, b: uint256) -> uint256:
-    if a > b:
-        return a
-    else:
-        return b
 
 
 @public
@@ -281,6 +257,11 @@ def inputs_ready() -> uint256:
 def initiate_mpc():
     # Must unmask eactly K values in each epoch
     assert self._input_queue.size >= self.inputs_unmasked + _K
+    # Can only initiate mix if enough preprocessings are ready
+    assert self._preprocess.triples >= self.preprocess_used.triples + _PER_MIX_TRIPLES
+    assert self._preprocess.bits >= self.preprocess_used.bits + _PER_MIX_BITS
+    self.preprocess_used.triples += _PER_MIX_TRIPLES
+    self.preprocess_used.bits += _PER_MIX_BITS
     self.inputs_unmasked += _K
     log.MpcEpochInitiated(self.epochs_initiated)
     self.epochs_initiated += 1
@@ -294,7 +275,7 @@ def initiate_mpc():
 #           at least t+1 servers report it
 
 @public
-def propose_output(epoch: uint256,  output: string[100]):
+def propose_output(epoch: uint256,  output: string[1000]):
     assert epoch < self.epochs_initiated    # can't provide output if it hasn't been initiated
     assert self.servermap[msg.sender] > 0   # only valid servers
     id: int128 = self.servermap[msg.sender] - 1
@@ -320,11 +301,37 @@ def propose_output(epoch: uint256,  output: string[100]):
 
 
 @mpc
-async def prog(ctx, *, field_element):
+async def prog(ctx, *, field_elements, pp_elements, triples, bits, mixer, k):
     logging.info(f"[{ctx.myid}] Running MPC network")
-    msg_share = ctx.Share(field_element)
-    opened_value = await msg_share.open()
-    opened_value_bytes = opened_value.value.to_bytes(32, "big")
-    logging.info(f"opened_value in bytes: {opened_value_bytes}")
-    msg = opened_value_bytes.decode().strip("\x00")
-    return msg
+    # TODO see if this could be moved out
+    for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
+        if kind == "triples":
+            elems = [e for sublist in elems for e in sublist]
+        elems = [e.value for e in elems]
+
+        # mixin = pp_elements.mixins[kind]
+        mixin = getattr(pp_elements, f"_{kind}")
+        mixin_filename = mixin.build_filename(ctx.N, ctx.t, ctx.myid)
+        logging.info(
+            f"writing preprocessed {kind} to file {mixin_filename}"
+        )
+        logging.info(f"number of elements is: {len(elems)}")
+        mixin._write_preprocessing_file(
+            mixin_filename, ctx.t, ctx.myid, elems, append=False
+        )
+    pp_elements._triples._refresh_cache()
+    pp_elements._one_minus_ones._refresh_cache()
+    # TODO -- end of "see if this (above) could be moved out"
+
+    shares = list(map(ctx.Share, field_elements))
+    #shares = [ctx.Share(field_element) for field_element in field_elements]
+    assert len(shares) == k
+    shuffled = await mixer(ctx, shares, k)
+    shuffled_shares = ctx.ShareArray(list(map(ctx.Share, shuffled)))
+    #shuffled_shares = ctx.ShareArray([ctx.Share[s] for s in shuffled])
+    opened_values = await shuffled_shares.open()
+    msgs = [
+        m.value.to_bytes(32, "big").decode().strip("\x00")
+        for m in opened_values
+    ]
+    return msgs

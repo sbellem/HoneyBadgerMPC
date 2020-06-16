@@ -8,6 +8,7 @@ from web3.contract import ConciseContract
 from apps.preprocessor import PreProcessor as _PreProcessor, field
 
 from honeybadgermpc.offline_randousha import generate_bits, generate_triples
+
 from honeybadgermpc.utils.misc import _create_task
 
 
@@ -71,8 +72,8 @@ class PreProcessor(_PreProcessor):
             # Append each triple
             self.elements["triples"] += triples
             self.elements["bits"] += bits
-            self.db[b"triples"] = pickle.dumps(triples)
-            self.db[b"bits"] = pickle.dumps(bits)
+            self.db[b"triples"] = pickle.dumps(self.elements["triples"])
+            self.db[b"bits"] = pickle.dumps(self.elements["bits"])
 
             # Step 1a. III) Submit an updated report
             # TODO parametrize generic method in apps/preprocessor.py
