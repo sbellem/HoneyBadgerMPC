@@ -8,8 +8,7 @@ if __name__ == "__main__":
 
     from apps.httpserver import HTTPServer
     from apps.parsers import ServerArgumentParser
-    from apps.masks.mpcprogrunner import MPCProgRunner
-
+    from apps.asynchromix2.mpcprogrunner import MPCProgRunner
     from apps.asynchromix2.preprocessor import PreProcessor
 
     # arg parsing

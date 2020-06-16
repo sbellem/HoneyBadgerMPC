@@ -484,11 +484,7 @@ class AsynchromixServer(object):
                     {"from": self.w3.eth.accounts[0]}
                 )
             except ValueError as err:
-                logging.info("\n")
-                logging.info(79 * "*")
                 logging.info(err)
-                logging.info(79 * "*")
-                logging.info("\n")
                 continue
             tx_receipt = await wait_for_receipt(self.w3, tx_hash)
             rich_logs = self.contract.events.MixingEpochInitiated().processReceipt(

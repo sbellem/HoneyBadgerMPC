@@ -19,10 +19,13 @@ export PRINT_HELP_PYSCRIPT
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-clean: clean-pyc rm-dbs
+clean: clean-pyc rm-dbs rm-preprocessing
 
 rm-dbs:
-	docker-compose run --no-deps --rm hbmpc.peer0.io rm -rf apps/asynchromix-docker/db*
+	docker-compose run --no-deps --rm hbmpc.peer0.io rm -rf apps/asynchromix2/db*
+
+rm-preprocessing:
+	docker-compose run --no-deps --rm hbmpc.peer0.io rm -rf sharedata/*
 
 clean-pyc: ## remove Python file artifacts
 	docker-compose run --no-deps --rm hbmpc.peer0.io find . -name '*.pyc' -exec rm -f {} +
