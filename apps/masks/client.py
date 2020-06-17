@@ -6,7 +6,7 @@ PARENT_DIR = Path(__file__).resolve().parent
 
 
 async def main(config_file):
-    from apps.baseclient import Client
+    from apps.toolkit.client import Client
 
     client = Client.from_toml_config(config_file)
     await client.join()

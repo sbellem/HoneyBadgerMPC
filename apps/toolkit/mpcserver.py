@@ -11,30 +11,9 @@ have already been unmasked ...
 """
 import logging  # noqa F401 - importing for contract
 
-from apps.utils import compile_ratel_contract, fetch_contract
+from apps.toolkit.utils import compile_ratel_contract, fetch_contract
 
 from honeybadgermpc.utils.misc import _get_pubsub_channel
-
-
-def _get_contract_context(eth_config):
-    from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
-    from apps.utils import get_contract_address
-
-    context = {
-        "address": get_contract_address(CONTRACT_ADDRESS_FILEPATH),
-        "filepath": eth_config["contract_path"],
-        "name": eth_config["contract_name"],
-    }
-    return context
-
-
-def _create_w3(eth_config):
-    from web3 import HTTPProvider, Web3
-
-    eth_rpc_hostname = eth_config["rpc_host"]
-    eth_rpc_port = eth_config["rpc_port"]
-    w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
-    return Web3(HTTPProvider(w3_endpoint_uri))
 
 
 class MPCServer:
@@ -173,10 +152,10 @@ if __name__ == "__main__":
 
     import toml
 
-    from apps.httpserver import HTTPServer
-    from apps.preprocessor import PreProcessor
-    from apps.parsers import ServerArgumentParser
-    from apps.masks.mpcprogrunner import MPCProgRunner
+    from apps.toolkit.httpserver import HTTPServer
+    from apps.toolkit.preprocessor import PreProcessor
+    from apps.toolkit.parsers import ServerArgumentParser
+    from apps.toolkit.mpcprogrunner import MPCProgRunner
 
     # arg parsing
     parser = ServerArgumentParser()

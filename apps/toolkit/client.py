@@ -13,7 +13,7 @@ import toml
 from web3 import HTTPProvider, Web3
 from web3.contract import ConciseContract
 
-from apps.utils import fetch_contract, get_contract_address, wait_for_receipt
+from apps.toolkit.utils import fetch_contract, get_contract_address, wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
@@ -245,8 +245,6 @@ class Client:
 
 
 async def main(config_file):
-    from apps.baseclient import Client
-
     client = Client.from_toml_config(config_file)
     await client.join()
 
