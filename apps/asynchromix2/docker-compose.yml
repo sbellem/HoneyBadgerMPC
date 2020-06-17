@@ -103,4 +103,4 @@ services:
       - hbmpc.peer1.io
       - hbmpc.peer2.io
       - hbmpc.peer3.io
-    command: ["./apps/toolkit/wait-for-it.sh", "hbmpc.peer3.io:8080", "--", "python", "apps/asynchromix2/client.py", "--config-file", "~/.hbmpc/config.toml"]
+    command: ["./apps/toolkit/wait-for-it.sh", "hbmpc.peer3.io:8080", "--", "python", "apps/toolkit/client.py", "--config-file", "~/.hbmpc/config.toml"]

@@ -28,7 +28,9 @@ Server = namedtuple("Server", ("id", "host", "port"))
 class Client:
     """An MPC client that sends "masked" messages to an Ethereum contract."""
 
-    def __init__(self, sid, myid, w3, req_mask, *, contract_context, mpc_network):
+    def __init__(
+        self, sid, myid, w3, req_mask, *, contract_context, mpc_network, **kwargs
+    ):
         """
         Parameters
         ----------
@@ -57,14 +59,16 @@ class Client:
         self.mpc_network = [Server(**server_attrs) for server_attrs in mpc_network]
         self._task = asyncio.create_task(self._run())
         self._task.add_done_callback(print_exception_callback)
+        self.number_of_epoch = kwargs.get("number_of_epoch", 10)
+        self.msg_batch_size = kwargs.get("msg_batch_size", 32)
 
     async def _run(self):
         contract_concise = ConciseContract(self.contract)
         # Client sends several batches of messages then quits
-        for epoch in range(10):
+        for epoch in range(self.number_of_epoch):
             logging.info(f"[Client] Starting Epoch {epoch}")
             receipts = []
-            for i in range(32):
+            for i in range(self.msg_batch_size):
                 m = f"Hello! (Client Epoch: {epoch}:{i})"
                 task = asyncio.ensure_future(self.send_message(m))
                 task.add_done_callback(print_exception_callback)
@@ -252,8 +256,6 @@ async def main(config_file):
 if __name__ == "__main__":
     import argparse
     from pathlib import Path
-
-    PARENT_DIR = Path(__file__).resolve().parent
 
     default_config_path = PARENT_DIR.joinpath("client.toml")
     # default_client_home = Path.home().joinpath(".hbmpc")
