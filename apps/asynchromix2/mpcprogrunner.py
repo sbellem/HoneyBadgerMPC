@@ -52,6 +52,7 @@ class MPCProgRunner:
         self.db = db
         self.prog = prog
         self.elements = {}  # cache of elements (inputmasks, triples, bits, etc)
+        # self._init_elements("inputmasks", "triples", "bits")
         self._init_elements("inputmasks")
 
     def _init_elements(self, *element_names):
@@ -124,7 +125,9 @@ class MPCProgRunner:
                 msg_field_elem = masked_message - inputmask
                 inputs.append(msg_field_elem)
 
+            ##################################################################
             # XXX asynchromix
+            # TODO see if this could be generalized/parametrized
             # 3.c. Collect the preprocessing
             _triples = pickle.loads(self.db[b"triples"])
             triples = _triples[epoch * PER_MIX_TRIPLES : (epoch + 1) * PER_MIX_TRIPLES]
@@ -137,24 +140,25 @@ class MPCProgRunner:
                 if key in mixin.cache:
                     del mixin.cache[key]
                     del mixin.count[key]
-            # XXX asynchromix
-            ## TODO see if this could be moved out
-            # for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
-            #    if kind == "triples":
-            #        elems = [e for sublist in elems for e in sublist]
-            #    elems = [e.value for e in elems]
+            # TODO see if this could be generalized/parametrized
+            for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
+                if kind == "triples":
+                    elems = [e for sublist in elems for e in sublist]
+                elems = [e.value for e in elems]
 
-            #    # mixin = pp_elements.mixins[kind]
-            #    mixin = getattr(pp_elements, f"_{kind}")
-            #    mixin_filename = mixin.build_filename(n, t, self.myid)
-            #    logging.info(f"writing preprocessed {kind} to file {mixin_filename}")
-            #    logging.info(f"number of elements is: {len(elems)}")
-            #    mixin._write_preprocessing_file(
-            #        mixin_filename, t, self.myid, elems, append=False
-            #    )
-            # pp_elements._triples._refresh_cache()
-            # pp_elements._one_minus_ones._refresh_cache()
-            ## TODO -- end of "see if this (above) could be moved out"
+                # mixin = pp_elements.mixins[kind]
+                mixin = getattr(pp_elements, f"_{kind}")
+                mixin_filename = mixin.build_filename(n, t, self.myid)
+                logging.info(f"writing preprocessed {kind} to file {mixin_filename}")
+                logging.info(f"number of elements is: {len(elems)}")
+                mixin._write_preprocessing_file(
+                    mixin_filename, t, self.myid, elems, append=False
+                )
+            pp_elements._triples._refresh_cache()
+            pp_elements._one_minus_ones._refresh_cache()
+            # TODO -- end of "see if this (above) could be generalized/parametrized"
+            # XXX asynchromix
+            ##################################################################
 
             send, recv = self.get_send_recv(f"mpc:{epoch}")
             logging.info(f"[{self.myid}] MPC initiated:{epoch}")
@@ -162,9 +166,6 @@ class MPCProgRunner:
             config = {MixinConstants.MultiplyShareArray: BeaverMultiplyArrays()}
             prog_kwargs = {
                 "field_elements": inputs,
-                "pp_elements": pp_elements,
-                "triples": triples,
-                "bits": bits,
                 "mixer": iterated_butterfly_network,
                 "k": K,
             }

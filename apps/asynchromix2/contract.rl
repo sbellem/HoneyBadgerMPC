@@ -301,28 +301,8 @@ def propose_output(epoch: uint256,  output: string[1000]):
 
 
 @mpc
-async def prog(ctx, *, field_elements, pp_elements, triples, bits, mixer, k):
+async def prog(ctx, *, field_elements, mixer, k):
     logging.info(f"[{ctx.myid}] Running MPC network")
-    # TODO see if this could be moved out
-    for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
-        if kind == "triples":
-            elems = [e for sublist in elems for e in sublist]
-        elems = [e.value for e in elems]
-
-        # mixin = pp_elements.mixins[kind]
-        mixin = getattr(pp_elements, f"_{kind}")
-        mixin_filename = mixin.build_filename(ctx.N, ctx.t, ctx.myid)
-        logging.info(
-            f"writing preprocessed {kind} to file {mixin_filename}"
-        )
-        logging.info(f"number of elements is: {len(elems)}")
-        mixin._write_preprocessing_file(
-            mixin_filename, ctx.t, ctx.myid, elems, append=False
-        )
-    pp_elements._triples._refresh_cache()
-    pp_elements._one_minus_ones._refresh_cache()
-    # TODO -- end of "see if this (above) could be moved out"
-
     shares = list(map(ctx.Share, field_elements))
     #shares = [ctx.Share(field_element) for field_element in field_elements]
     assert len(shares) == k
