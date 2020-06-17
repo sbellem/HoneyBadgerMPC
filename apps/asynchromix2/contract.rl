@@ -301,14 +301,11 @@ def propose_output(epoch: uint256,  output: string[1000]):
 
 
 @mpc
-async def prog(ctx, *, field_elements, mixer, k):
+async def prog(ctx, *, field_elements, mixer):
     logging.info(f"[{ctx.myid}] Running MPC network")
-    shares = list(map(ctx.Share, field_elements))
-    #shares = [ctx.Share(field_element) for field_element in field_elements]
-    assert len(shares) == k
-    shuffled = await mixer(ctx, shares, k)
-    shuffled_shares = ctx.ShareArray(list(map(ctx.Share, shuffled)))
-    #shuffled_shares = ctx.ShareArray([ctx.Share[s] for s in shuffled])
+    shares = (ctx.Share(field_element) for field_element in field_elements)
+    shuffled = await mixer(ctx, shares)
+    shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
     opened_values = await shuffled_shares.open()
     msgs = [
         m.value.to_bytes(32, "big").decode().strip("\x00")

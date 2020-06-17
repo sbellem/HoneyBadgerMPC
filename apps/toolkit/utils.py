@@ -5,6 +5,7 @@ from ethereum.tools._solidity import compile_code as compile_solidity
 from ratl import RatelCompiler
 from vyper.compiler import compile_code as compile_vyper
 
+from web3 import HTTPProvider, Web3
 from web3.exceptions import TransactionNotFound
 
 SOLIDITY_LANG = "solidity"
@@ -243,3 +244,19 @@ def compile_ratel_contract(filepath, *, vyper_output_formats=("abi", "bytecode")
     return ratel_compiler.compile(
         contract_code, vyper_output_formats=vyper_output_formats
     )
+
+
+def _get_contract_context(eth_config, contract_address_filepath):
+    context = {
+        "address": get_contract_address(contract_address_filepath),
+        "filepath": eth_config["contract_path"],
+        "name": eth_config["contract_name"],
+    }
+    return context
+
+
+def _create_w3(eth_config):
+    eth_rpc_hostname = eth_config["rpc_host"]
+    eth_rpc_port = eth_config["rpc_port"]
+    w3_endpoint_uri = f"http://{eth_rpc_hostname}:{eth_rpc_port}"
+    return Web3(HTTPProvider(w3_endpoint_uri))

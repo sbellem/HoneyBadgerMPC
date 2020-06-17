@@ -19,7 +19,7 @@ import toml
 
 from web3.contract import ConciseContract
 
-from apps.utils import fetch_contract, wait_for_receipt
+from apps.toolkit.utils import fetch_contract, wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
@@ -214,7 +214,7 @@ class Server:
         """
         from web3 import HTTPProvider, Web3
         from apps.masks.config import CONTRACT_ADDRESS_FILEPATH
-        from apps.utils import get_contract_address
+        from apps.toolkit.utils import get_contract_address
 
         eth_config = config["eth"]
         # contract

@@ -1,4 +1,4 @@
-from apps.mpcserver import runner
+from apps.toolkit.mpcserver import runner
 
 
 if __name__ == "__main__":
@@ -6,8 +6,8 @@ if __name__ == "__main__":
 
     import toml
 
-    from apps.httpserver import HTTPServer
-    from apps.parsers import ServerArgumentParser
+    from apps.toolkit.httpserver import HTTPServer
+    from apps.toolkit.parsers import ServerArgumentParser
     from apps.asynchromix2.mpcprogrunner import MPCProgRunner
     from apps.asynchromix2.preprocessor import PreProcessor
 
