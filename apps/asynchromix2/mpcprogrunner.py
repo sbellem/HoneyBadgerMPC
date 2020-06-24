@@ -14,8 +14,6 @@ from honeybadgermpc.utils.misc import _create_task
 # imports needed for asynchromix
 from apps.asynchromix.butterfly_network import iterated_butterfly_network
 from honeybadgermpc.preprocessing import PreProcessedElements
-from honeybadgermpc.progs.mixins.constants import MixinConstants
-from honeybadgermpc.progs.mixins.share_arithmetic import BeaverMultiplyArrays
 
 field = GF(Subgroup.BLS12_381)
 
@@ -27,7 +25,16 @@ class MPCProgRunner:
     """
 
     def __init__(
-        self, sid, myid, w3, *, contract=None, db=None, channel=None, prog=None
+        self,
+        sid,
+        myid,
+        w3,
+        *,
+        contract=None,
+        db=None,
+        channel=None,
+        prog=None,
+        mpc_config=None,
     ):
         """
         Parameters
@@ -51,6 +58,7 @@ class MPCProgRunner:
         self.get_send_recv = channel
         self.db = db
         self.prog = prog
+        self.mpc_config = mpc_config or {}
         self.elements = {}  # cache of elements (inputmasks, triples, bits, etc)
         # self._init_elements("inputmasks", "triples", "bits")
         self._init_elements("inputmasks")
@@ -163,7 +171,6 @@ class MPCProgRunner:
             send, recv = self.get_send_recv(f"mpc:{epoch}")
             logging.info(f"[{self.myid}] MPC initiated:{epoch}")
 
-            config = {MixinConstants.MultiplyShareArray: BeaverMultiplyArrays()}
             prog_kwargs = {
                 "field_elements": inputs,
                 "mixer": iterated_butterfly_network,
@@ -176,7 +183,7 @@ class MPCProgRunner:
                 send,
                 recv,
                 self.prog,
-                config,
+                self.mpc_config,
                 **prog_kwargs,
             )
             result = await ctx._run()

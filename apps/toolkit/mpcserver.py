@@ -32,6 +32,7 @@ class MPCServer:
         preprocessor_class=None,
         httpserver_class=None,
         mpcprogrunner_class=None,
+        mpc_config=None,
         http_context,
         # prog=None,
     ):
@@ -71,6 +72,7 @@ class MPCServer:
         self.httpserver_class = httpserver_class
         self.http_context = http_context
         self.mpcprogrunner_class = mpcprogrunner_class
+        self.mpc_config = mpc_config or {}
 
         # NOTE "Load" MPC prog
         exec(mpc_output["src_code"], globals())
@@ -78,6 +80,7 @@ class MPCServer:
         self._init_tasks()
 
     def _init_tasks(self):
+        # NOTE MPC "offline" phase
         self.preprocessor = self.preprocessor_class(
             self.sid,
             self.myid,
@@ -86,6 +89,7 @@ class MPCServer:
             db=self.db,
             channel=self.channel,
         )
+        # NOTE for handling cient requests
         self.http_server = self.httpserver_class(
             self.sid,
             self.myid,
@@ -93,6 +97,7 @@ class MPCServer:
             port=self.http_context["port"],
             db=self.db,
         )
+        # NOTE MPC "online" phase
         self.mpc_prog_runner = self.mpcprogrunner_class(
             self.sid,
             self.myid,
@@ -101,6 +106,7 @@ class MPCServer:
             db=self.db,
             channel=self.channel,
             prog=self.prog,
+            mpc_config=self.mpc_config,
         )
 
     async def start(self):
@@ -110,6 +116,15 @@ class MPCServer:
         await self.subscribe_task
 
 
+# TODO simplify arguments to something like:
+#
+#   eth_context and mpc_context
+#
+# these can be namedtuples, e.g.:
+#
+# EthContext = namedtuple('EthContext', ('w3', 'contract_context'))
+# MpcContext = namedtuple('MpcContext', ('http', 'preprocessing', 'mpc'))
+# MpcContext = namedtuple('MpcContext', ('http', 'offline', 'online'))
 async def runner(
     session_id,
     myid,
@@ -124,6 +139,7 @@ async def runner(
     preprocessor_class,
     httpserver_class,
     mpcprogrunner_class,
+    mpc_config=None,
 ):
     from honeybadgermpc.ipc import NodeCommunicator2
 
@@ -143,6 +159,7 @@ async def runner(
             preprocessor_class=preprocessor_class,
             httpserver_class=httpserver_class,
             mpcprogrunner_class=mpcprogrunner_class,
+            mpc_config=mpc_config,
         )
         await mpcserver.start()
 
