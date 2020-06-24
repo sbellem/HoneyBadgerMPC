@@ -32,7 +32,7 @@ class Mpc(object):
         send,
         recv,
         prog,
-        config,
+        config=None,
         preproc=None,
         shard_id=None,
         **prog_args,
@@ -47,7 +47,7 @@ class Mpc(object):
         self.myid = myid
         self.field = GF(Subgroup.BLS12_381)
         self.poly = polynomials_over(self.field)
-        self.config = config
+        self.config = config if config is not None else {}
         self.preproc = preproc if preproc is not None else PreProcessedElements()
         self.shard_id = shard_id
 

@@ -53,8 +53,6 @@ class MPCProgRunner:
     async def start(self):
         await self._mpc
         await self._mpc_init
-        # await self._mpc_loop()
-        # await self._mpc_initiate_loop()
 
     async def _mpc_loop(self):
         logging.info("MPC loop started ...")

@@ -1,15 +1,16 @@
-from apps.toolkit.mpcserver import runner
-
-
 if __name__ == "__main__":
     import asyncio
 
     import toml
 
     from apps.toolkit.httpserver import HTTPServer
+    from apps.toolkit.mpcserver import runner
     from apps.toolkit.parsers import ServerArgumentParser
     from apps.asynchromix2.mpcprogrunner import MPCProgRunner
     from apps.asynchromix2.preprocessor import PreProcessor
+
+    from honeybadgermpc.progs.mixins.constants import MixinConstants
+    from honeybadgermpc.progs.mixins.share_arithmetic import BeaverMultiplyArrays
 
     # arg parsing
     parser = ServerArgumentParser()
@@ -33,5 +34,6 @@ if __name__ == "__main__":
             preprocessor_class=PreProcessor,
             httpserver_class=HTTPServer,
             mpcprogrunner_class=MPCProgRunner,
+            mpc_config={MixinConstants.MultiplyShareArray: BeaverMultiplyArrays()},
         )
     )
