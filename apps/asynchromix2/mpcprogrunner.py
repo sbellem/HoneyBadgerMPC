@@ -17,6 +17,43 @@ from honeybadgermpc.preprocessing import PreProcessedElements
 
 field = GF(Subgroup.BLS12_381)
 
+# TODO if possible, avoid the need for such a map. One way to do so would be to
+# simply adopt the same naming convention for the db and the PreProcessingElements
+# methods.
+PP_ELEMENTS_MIXIN_MAP = {"triples": "_triples", "bits": "_one_minus_ones"}
+
+
+def _load_pp_elements(node_id, n, t, epoch, db, cache, elements_metadata):
+    cache._init_data_dir()
+    elements = {}
+    for element_name, slice_size in elements_metadata.items():
+        _elements = pickle.loads(db[element_name.encode()])
+        elements[element_name] = _elements[
+            epoch * slice_size : (epoch + 1) * slice_size
+        ]
+
+    mixins = tuple(
+        getattr(cache, PP_ELEMENTS_MIXIN_MAP[element_name]) for element_name in elements
+    )
+    # Hack explanation... the relevant mixins are in triples
+    key = (node_id, n, t)
+    for mixin in mixins:
+        if key in mixin.cache:
+            del mixin.cache[key]
+            del mixin.count[key]
+
+    for mixin, (kind, elems) in zip(mixins, elements.items()):
+        if kind == "triples":
+            elems = [e for sublist in elems for e in sublist]
+        elems = [e.value for e in elems]
+        mixin_filename = mixin.build_filename(n, t, node_id)
+        logging.info(f"writing preprocessed {kind} to file {mixin_filename}")
+        logging.info(f"number of elements is: {len(elems)}")
+        mixin._write_preprocessing_file(mixin_filename, t, node_id, elems, append=False)
+
+    for mixin in mixins:
+        mixin._refresh_cache()
+
 
 class MPCProgRunner:
     """MPC participant responsible to take part into a multi-party
@@ -87,9 +124,9 @@ class MPCProgRunner:
         contract_concise = ConciseContract(self.contract)
         n = contract_concise.n()
         t = contract_concise.t()
+        K = contract_concise.K()  # noqa: N806
 
         # XXX asynchromix
-        K = contract_concise.K()  # noqa: N806
         PER_MIX_TRIPLES = contract_concise.PER_MIX_TRIPLES()  # noqa: N806
         PER_MIX_BITS = contract_concise.PER_MIX_BITS()  # noqa: N806
         pp_elements = PreProcessedElements()
@@ -133,41 +170,15 @@ class MPCProgRunner:
                 msg_field_elem = masked_message - inputmask
                 inputs.append(msg_field_elem)
 
-            ##################################################################
-            # XXX asynchromix
-            # TODO see if this could be generalized/parametrized
-            # 3.c. Collect the preprocessing
-            _triples = pickle.loads(self.db[b"triples"])
-            triples = _triples[epoch * PER_MIX_TRIPLES : (epoch + 1) * PER_MIX_TRIPLES]
-            _bits = pickle.loads(self.db[b"bits"])
-            bits = _bits[epoch * PER_MIX_BITS : (epoch + 1) * PER_MIX_BITS]
-
-            # Hack explanation... the relevant mixins are in triples
-            key = (self.myid, n, t)
-            for mixin in (pp_elements._triples, pp_elements._one_minus_ones):
-                if key in mixin.cache:
-                    del mixin.cache[key]
-                    del mixin.count[key]
-            # TODO see if this could be generalized/parametrized
-            for kind, elems in zip(("triples", "one_minus_ones"), (triples, bits)):
-                if kind == "triples":
-                    elems = [e for sublist in elems for e in sublist]
-                elems = [e.value for e in elems]
-
-                # mixin = pp_elements.mixins[kind]
-                mixin = getattr(pp_elements, f"_{kind}")
-                mixin_filename = mixin.build_filename(n, t, self.myid)
-                logging.info(f"writing preprocessed {kind} to file {mixin_filename}")
-                logging.info(f"number of elements is: {len(elems)}")
-                mixin._write_preprocessing_file(
-                    mixin_filename, t, self.myid, elems, append=False
-                )
-            pp_elements._triples._refresh_cache()
-            pp_elements._one_minus_ones._refresh_cache()
-            # TODO -- end of "see if this (above) could be generalized/parametrized"
-            # XXX asynchromix
-            ##################################################################
-
+            _load_pp_elements(
+                self.myid,
+                n,
+                t,
+                epoch,
+                self.db,
+                pp_elements,
+                {"triples": PER_MIX_TRIPLES, "bits": PER_MIX_BITS},
+            )
             send, recv = self.get_send_recv(f"mpc:{epoch}")
             logging.info(f"[{self.myid}] MPC initiated:{epoch}")
 
