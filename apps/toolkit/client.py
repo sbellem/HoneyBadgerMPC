@@ -20,7 +20,6 @@ from honeybadgermpc.field import GF
 from honeybadgermpc.polynomial import EvalPoint, polynomials_over
 from honeybadgermpc.utils.misc import print_exception_callback
 
-PARENT_DIR = Path(__file__).resolve().parent
 field = GF(Subgroup.BLS12_381)
 Server = namedtuple("Server", ("id", "host", "port"))
 
@@ -255,8 +254,8 @@ async def main(config_file):
 
 if __name__ == "__main__":
     import argparse
-    from pathlib import Path
 
+    PARENT_DIR = Path(__file__).resolve().parent
     default_config_path = PARENT_DIR.joinpath("client.toml")
     # default_client_home = Path.home().joinpath(".hbmpc")
     # default_contract_address_path = default_client_home.joinpath(
