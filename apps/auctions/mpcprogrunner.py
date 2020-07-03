@@ -100,6 +100,10 @@ class MPCProgRunner:
         # self._init_elements("inputmasks", "triples", "bits")
         self._init_elements("inputmasks")
 
+    @property
+    def eth_account(self):
+        return self.w3.eth.accounts[self.myid]
+
     def _init_elements(self, *element_names):
         for element_name in element_names:
             try:
@@ -201,9 +205,10 @@ class MPCProgRunner:
             logging.info(f"[{self.myid}] MPC complete {result}")
 
             # 3.e. Output the published messages to contract
-            result = ",".join(result)
+            result = ",".join(str(i) for i in result)
             tx_hash = self.contract.functions.propose_output(epoch, result).transact(
-                {"from": self.w3.eth.accounts[self.myid]}
+                # {"from": self.w3.eth.accounts[self.myid]}
+                {"from": self.eth_account}
             )
             tx_receipt = await wait_for_receipt(self.w3, tx_hash)
             rich_logs = self.contract.events.MpcOutput().processReceipt(tx_receipt)
@@ -242,7 +247,9 @@ class MPCProgRunner:
             logging.info("call contract function initiate_mpc() ...")
             try:
                 tx_hash = self.contract.functions.initiate_mpc().transact(
-                    {"from": self.w3.eth.accounts[0]}
+                    # {"from": self.w3.eth.accounts[0]}
+                    # {"from": self.w3.eth.accounts[self.myid]}
+                    {"from": self.eth_account}
                 )
             except ValueError as err:
                 # Since only one server is needed to initiate the MPC, once

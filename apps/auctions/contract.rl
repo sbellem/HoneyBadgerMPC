@@ -307,8 +307,11 @@ async def prog(ctx, *, field_elements, mixer):
     shuffled = await mixer(ctx, shares)
     shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
     opened_values = await shuffled_shares.open()
-    msgs = [
-        m.value.to_bytes(32, "big").decode().strip("\x00")
-        for m in opened_values
-    ]
+    _x = [m.value for m in opened_values]
+    logging.info(f"opened shares: {_x}")
+    #msgs = [
+    #    m.value.to_bytes(32, "big").decode().strip("\x00")
+    #    for m in opened_values
+    #]
+    msgs = _x
     return msgs

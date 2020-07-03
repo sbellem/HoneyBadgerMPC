@@ -326,7 +326,9 @@ def main(*, balances=None, bids=None):
 
 
 if __name__ == "__main__":
-    addresses = ("0x125", "0x127", "0x128", "0x129")
+    # import random
+
+    addresses = tuple("0x1{i}" for i in range(32, 64))
 
     balances = {
         addresses[0]: {"eth": 15, "erc20": 1},
@@ -334,11 +336,13 @@ if __name__ == "__main__":
         addresses[2]: {"eth": 2, "erc20": 3},
         addresses[3]: {"eth": 0, "erc20": 15},
     }
+    # balances.update({addr: {"eth": 100, "erc20": 100} for addr in addresses[4:]})
     bids = [
         (addresses[0], 5),
         (addresses[1], 7),
         (addresses[2], -3),
         (addresses[3], -11),
     ]
+    # bids.extend(((addr, random.randint(-10, 10)) for addr in addresses[4:]))
 
     main(balances=balances, bids=bids)

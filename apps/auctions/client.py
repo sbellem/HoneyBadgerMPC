@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 
 from web3.contract import ConciseContract
 
@@ -11,8 +12,7 @@ from honeybadgermpc.utils.misc import print_exception_callback
 
 class Client(_Client):
     def _fake_bids(self):
-        bids = [5, 7, -3, -11]
-        return bids
+        return (random.randint(0, 10) for _ in range(32))
 
     async def _run(self):
         contract_concise = ConciseContract(self.contract)
@@ -20,9 +20,16 @@ class Client(_Client):
         for epoch in range(self.number_of_epoch):
             logging.info(f"[Client] Starting Epoch {epoch}")
             receipts = []
-            for i in range(self.msg_batch_size):
-                m = f"Hello! (Client Epoch: {epoch}:{i})"
-                task = asyncio.ensure_future(self.send_message(m))
+            # for i in range(self.msg_batch_size):
+            for i, bid in enumerate(self._fake_bids()):
+                sender_id = i + 10
+                # sender = self.w3.eth.accounts[self.myid]
+                sender = self.w3.eth.accounts[sender_id]
+                # m = f"Bid from {sender_id}:{sender} at epoch: {epoch}:{i})"
+                logging.info(f"sender: {sender}")
+                # m = f"<Epoch: {epoch}, Bid: {bid}, Sender: {sender_id}>"
+                m = bid
+                task = asyncio.ensure_future(self.send_message(m, sender=sender))
                 task.add_done_callback(print_exception_callback)
                 receipts.append(task)
             receipts = await asyncio.gather(*receipts)
@@ -32,13 +39,13 @@ class Client(_Client):
                     break
                 await asyncio.sleep(5)
 
-    async def send_message(self, m, *, sender_addr=None):
+    async def send_message(self, m, *, sender=None):
         logging.info("sending message ...")
         # Submit a message to be unmasked
         contract_concise = ConciseContract(self.contract)
 
-        if sender_addr is None:
-            sender_addr = self.w3.eth.accounts[0]
+        if sender is None:
+            sender = self.w3.eth.accounts[self.myid]
 
         # Step 1. Wait until there is input available, and enough triples
         while True:
@@ -50,9 +57,7 @@ class Client(_Client):
 
         # Step 2. Reserve the input mask
         logging.info("trying to reserve an input mask ...")
-        tx_hash = self.contract.functions.reserve_inputmask().transact(
-            {"from": self.w3.eth.accounts[0]}
-        )
+        tx_hash = self.contract.functions.reserve_inputmask().transact({"from": sender})
         tx_receipt = await wait_for_receipt(self.w3, tx_hash)
         rich_logs = self.contract.events.InputMaskClaimed().processReceipt(tx_receipt)
         if rich_logs:
@@ -66,8 +71,11 @@ class Client(_Client):
         logging.info("query the MPC servers for their share of the input mask ...")
         inputmask = await self._get_inputmask(inputmask_idx)
         logging.info("input mask has been privately reconstructed")
-        message = int.from_bytes(m.encode(), "big")
+        # message = int.from_bytes(m.encode(), "big")
+        message = m
         logging.info("masking the message ...")
+        logging.info(f"... <SECRET> with input mask {inputmask} <SECRET> ...")
+        logging.info(f"type of inputmask: {type(inputmask)} ...")
         masked_message = message + inputmask
         masked_message_bytes = self.w3.toBytes(hexstr=hex(masked_message.value))
         masked_message_bytes = masked_message_bytes.rjust(32, b"\x00")
@@ -76,7 +84,7 @@ class Client(_Client):
         logging.info("publish the masked message to the public contract ...")
         tx_hash = self.contract.functions.submit_message(
             inputmask_idx, masked_message_bytes
-        ).transact({"from": self.w3.eth.accounts[0]})
+        ).transact({"from": sender})
         tx_receipt = await wait_for_receipt(self.w3, tx_hash)
         rich_logs = self.contract.events.MessageSubmitted().processReceipt(tx_receipt)
         if rich_logs:
