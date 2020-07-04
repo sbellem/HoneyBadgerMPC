@@ -1,6 +1,7 @@
 import asyncio
 import logging
-import random
+
+# import random
 
 from web3.contract import ConciseContract
 
@@ -12,21 +13,23 @@ from honeybadgermpc.utils.misc import print_exception_callback
 
 class Client(_Client):
     def _fake_bids(self):
-        return (random.randint(0, 10) for _ in range(32))
+        # return (random.randint(-10, 10) for _ in range(32))
+        return range(32)
 
     async def _run(self):
         contract_concise = ConciseContract(self.contract)
         # Client sends several batches of messages then quits
         for epoch in range(self.number_of_epoch):
-            logging.info(f"[Client] Starting Epoch {epoch}")
+            logging.info(f"[Client] Starting Epoch {epoch} ...")
             receipts = []
             # for i in range(self.msg_batch_size):
             for i, bid in enumerate(self._fake_bids()):
-                sender_id = i + 10
-                # sender = self.w3.eth.accounts[self.myid]
-                sender = self.w3.eth.accounts[sender_id]
+                # sender_id = i + 10
+                sender = self.w3.eth.accounts[self.myid]
+                # sender = self.w3.eth.accounts[sender_id]
                 # m = f"Bid from {sender_id}:{sender} at epoch: {epoch}:{i})"
                 logging.info(f"sender: {sender}")
+                logging.info(f"bid: {bid}")
                 # m = f"<Epoch: {epoch}, Bid: {bid}, Sender: {sender_id}>"
                 m = bid
                 task = asyncio.ensure_future(self.send_message(m, sender=sender))
@@ -73,7 +76,7 @@ class Client(_Client):
         logging.info("input mask has been privately reconstructed")
         # message = int.from_bytes(m.encode(), "big")
         message = m
-        logging.info("masking the message ...")
+        logging.info("masking the message ... <SECRET> {m} <SECRET>")
         logging.info(f"... <SECRET> with input mask {inputmask} <SECRET> ...")
         logging.info(f"type of inputmask: {type(inputmask)} ...")
         masked_message = message + inputmask

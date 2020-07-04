@@ -302,13 +302,14 @@ def propose_output(epoch: uint256,  output: string[1000]):
 
 @mpc
 async def prog(ctx, *, field_elements, mixer):
-    logging.info(f"[{ctx.myid}] Running MPC network")
-    shares = (ctx.Share(field_element) for field_element in field_elements)
-    shuffled = await mixer(ctx, shares)
-    shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
+    logging.info(f"[NODE {ctx.myid}] Running MPC program ...")
+    #shares = (ctx.Share(field_element) for field_element in field_elements)
+    #shuffled = await mixer(ctx, shares)
+    #shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
+    shuffled_shares = ctx.ShareArray(field_elements)
     opened_values = await shuffled_shares.open()
     _x = [m.value for m in opened_values]
-    logging.info(f"opened shares: {_x}")
+    logging.info(f"opened bids: {_x}")
     #msgs = [
     #    m.value.to_bytes(32, "big").decode().strip("\x00")
     #    for m in opened_values

@@ -184,7 +184,7 @@ class MPCProgRunner:
                 {"triples": PER_MIX_TRIPLES, "bits": PER_MIX_BITS},
             )
             send, recv = self.get_send_recv(f"mpc:{epoch}")
-            logging.info(f"[{self.myid}] MPC initiated:{epoch}")
+            logging.info(f"[NODE {self.myid}] MPC initiated:{epoch} ...")
 
             prog_kwargs = {
                 "field_elements": inputs,
@@ -202,7 +202,7 @@ class MPCProgRunner:
                 **prog_kwargs,
             )
             result = await ctx._run()
-            logging.info(f"[{self.myid}] MPC complete {result}")
+            logging.info(f"[EPOCH: {epoch} | NODE: {self.myid}] MPC complete: {result}")
 
             # 3.e. Output the published messages to contract
             result = ",".join(str(i) for i in result)
@@ -216,7 +216,7 @@ class MPCProgRunner:
                 epoch = rich_logs[0]["args"]["epoch"]
                 output = rich_logs[0]["args"]["output"]
                 logging.info(40 * "*")
-                logging.info(f"[{self.myid}] MPC OUTPUT[{epoch}] {output}")
+                logging.info(f"[{self.myid}] MPC OUTPUT[epoch:{epoch}] {output}")
                 logging.info(40 * "*")
 
             epoch += 1
