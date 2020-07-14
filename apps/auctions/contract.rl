@@ -302,11 +302,14 @@ def propose_output(epoch: uint256,  output: string[1000]):
 
 @mpc
 async def prog(ctx, *, field_elements, mixer):
+    from honeybadgermpc.progs.fixedpoint import FixedPoint
     logging.info(f"[NODE {ctx.myid}] Running MPC program ...")
     #shares = (ctx.Share(field_element) for field_element in field_elements)
+    fps = (FixedPoint(ctx, ctx.Share(field_element) for field_element in field_elements)
     #shuffled = await mixer(ctx, shares)
     #shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
-    shuffled_shares = ctx.ShareArray(field_elements)
+    #shuffled_shares = ctx.ShareArray(field_elements)
+    shuffled_shares = ctx.ShareArray(([fp.share for fp in fps])
     opened_values = await shuffled_shares.open()
     _x = [m.value for m in opened_values]
     logging.info(f"opened bids: {_x}")
