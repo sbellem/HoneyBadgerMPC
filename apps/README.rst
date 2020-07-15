@@ -1,0 +1,197 @@
+HoneyBadgerMPC Applications
+===========================
+
++------------+---------+
+| **STATUS** | *draft* |
++------------+---------+
+
+This directory contains experimental applications using HoneyBadgerMPC.
+There's also a sub-directory that contains some tutorials. See the README
+under tutorial/README.md for more details.
+
+The first app was asynchromix which uses Ethereum as a "trusted" coordinator
+to mix messages from clients.
+
+We're currently trying to develop a framework to compose MPC applications with
+Ethereum as a "trusted" coordinator. In the context of that effort, the
+asynchromix application was revisited, and partially re-implemented using
+that (work-in-progress) framework. It would perhaps more accurate to say that
+the framework originated out of the asynchromix application. The idea is to
+provide a framework in an application developer would mainly focus on writing
+a smart contract along with an MPC extension, that would be part of that smart
+contract. A custom parser/compiler would take care of splitting the Ethereum
+smart contract part from the MPC extension.
+
+It's important to note this framework is currently purely experimental, but
+can nevertheless be used as some kind of sand box by an application developer.
+The reason why it can be used as a sandbox is because it is a self-contained
+environment using docker containers, managed by docker-compose. The key
+components of the framework are as follows:
+
+* Ethereum (development) blockchain
+* Smart contract deploying service
+* MPC servers
+* Client
+
+Each component is run in a separate docker container, including each MPC
+server. From the point of view of docker-compose each component is a service.
+To give a concrete example, for a system containing 4 MPC players, and one
+client, there will be 7 services/containers: 4 MPC player containers, 1
+client, 1 contract deployer, 1 Ethereum blockchain.
+
+The aim of the framework is to provide the generic code for the key
+components, especially the MPC server code. Ideally, the application developer
+would mostly focus on writing the smart contract along with the MPC extension.
+For the purpose of the presentation of the concept, let's consider a custom
+smart contract language that supports this extensibility option. We'll call
+this language **ratelang** or *ratel* for short. Concretely speaking, this is
+currently being implemented using **Vyper** as a basis. Let's consider the
+following code snippet as an example, from the asynchromix2 contract:
+
+.. code-block:: python
+
+    @mpc
+    async def prog(ctx, *, field_elements, mixer):
+        shares = (ctx.Share(field_element) for field_element in field_elements)
+        shuffled = await mixer(ctx, shares)
+        shuffled_shares = ctx.ShareArray(ctx.Share(s) for s in shuffled)
+        opened_values = await shuffled_shares.open()
+        msgs = [
+            m.value.to_bytes(32, "big").decode().strip("\x00")
+            for m in opened_values
+        ]
+        return msgs
+
+What we are working towards would be more or less like:
+
+.. code-block:: python
+
+    @mpc(pp_elements=('bits', 'triples')
+    async def prog(sharearray: shares):
+        mixed_shares = await shares.mix(algo='butterfly')
+        return await mixed_shares.open()
+
+The above snippet specifies an MPC program, along with the preprocessing
+elements that it requires. The application developer would write this program
+as part of a smart contract. The decorator ``@mpc`` acts as a marker to
+indicate to the parser that this code has to be split from the part that is
+aimed at the Ethereum EVM. For instance, here's an example of a code snippet
+from the asynchromix2 smart contract that contains both Vyper (Ethereum smart
+contract language) code and an MPC extension code, as shown above.
+
+.. code-block:: python
+
+    @public
+    def propose_output(epoch: uint256,  output: string[1000]):
+        assert epoch < self.epochs_initiated    # can't provide output if it hasn't been initiated
+        assert self.servermap[msg.sender] > 0   # only valid servers
+        id: int128 = self.servermap[msg.sender] - 1
+    
+        # Each server can only vote once per epoch
+        assert epoch <= self.server_voted[id]
+        self.server_voted[id] = max(epoch + 1, self.server_voted[id])
+    
+        output_hash: bytes32 = keccak256(output)
+    
+        if self.output_votes.votes[epoch] > 0:
+            # All the votes must match
+            assert output_hash == self.output_hashes.hashes[epoch]
+        else:
+            self.output_hashes.hashes[epoch] = output_hash
+    
+        self.output_votes.votes[epoch] += 1
+        if self.output_votes.votes[epoch] == self.t + 1:   # at least one honest node agrees
+            log.MpcOutput(epoch, output)
+            self.outputs_ready += 1
+
+
+    @mpc(pp_elements=('bits', 'triples')
+    async def prog(sharearray: shares):
+        mixed_shares = await shares.mix(algo='butterfly')
+        return await mixed_shares.open()
+
+The above snippet contains a public Vyper function, and an MPC
+function/program. The first step of the compiler is to split those 2 apart.
+Once split, the Ethereum-specific part is fed to the Vyper compiler to produce
+the bytecode and so forth. Roughly speaking, the MPC part is fed to the
+application framework. If we are being more specific and concrete, the current
+implementation works by simply producing a string representation of the MPC
+program and passing it to Python's ``exec`` built-in function. The MPC program
+is then passed to the MPC server code, provided by the framework. The
+specified preprocessing elements would also be passed to the preprocessing
+and MPC server modules thus indicating to these components that the specified
+elements must be generated.
+
+HoneyBadgerMPC does not have a virtual machine or runtime environment but one
+could easily imagine that the MPC part of the smart contract could be compiled
+to a bytecode for a particular targeted virtual machine of an MPC system.
+Say for instance, one wishes to run an MPC program on MP-SPDZ, then the
+mechanics of what has been presented so far could be used to support writing
+MP-SPDZ -compatible MPC programs that would integrate in a larger system which
+would include Ethereum as a "trusted" coordinator.
+
+
+Implementation
+--------------
+Things to note:
+
+* "Independent" preprocessing module
+* HTTP server to handle client requests, using ``aiohttp``
+* MPC program runner / server that runs the actual MPC program, which is
+  specified in the smart contract
+* Persistence layer using LevelDB, mainly to store the preprocessing elements
+* Smart contract language is Vyper with MPC extensibility support, implemented
+  in ``ratelang``: https://github.com/ratelang/ratel
+
+Using the framework as a stepping stone towards a testnet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+An application developer wishing to spin their application into a test network
+may benefit substantially from the proposed framework. Given that each key
+component is already isolated, and running in its own separate container, it
+somewhat mimics, loosely speaking, a real-world "testnet" scenario. Hence, one
+may use the framework as a stepping stone towards deploying an actual test
+network.
+
+Things missing
+""""""""""""""
+Some key things are most certainly missing, some of which are:
+
+* Secure communication betweeen MPC servers (TLS sockets with zeromq).
+* Client authorization mechanism. When receiving a client request for a
+  share of an input mask, an MPC server should only send its share if the
+  client is authorized. `Not exactly sure on how to do this, perhaps using
+  the client's ethereum public key ...`.
+
+
+Ratelang: Vyper and HoneyBadger meet
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ratelang is the current codename for this somewhat hybrid language that
+contains Ethereum's smart contract Vyper language and Python-like MPC program
+definitions.
+
+The overall implementation is currently very simple: the hybrid language is
+parsed and split into 2 distinct parts: pure Vyper code, and pure MPC/Python
+code. Each part is then processed separately: (1) the Vyper code is compiled
+using Vyper's compiler; (2) the MPC program definitions are simply put into
+their string representations, which can then be compiled and executed using
+Python's built-in ``exec`` function. Some future work could make it possible
+to compile the MPC program definition into bytecode, assuming there would
+be a suitable virtual machine that can execute that bytecode.
+
+The current implementation is very raw, in the sense that the MPC program
+definition is coded as it was or would be if one was writing it in using
+the HoneyBadgerMPC codebase. The aim however is to provide a higher-level
+abstraction as was noted above. For the asynchromix example, the higher-level
+abstraction would look like:
+
+.. code-block:: python
+
+    @mpc(pp_elements=('bits', 'triples')
+    async def prog(sharearray: shares):
+        mixed_shares = await shares.mix(algo='butterfly')
+        return await mixed_shares.open()
+
+The ``@mpc`` decorator's key role is to identify this code as MPC code,
+meaning "not" Vyper (Ethereum) code. The ``@mpc`` decorator can also be
+passed arguments to specify which preprocessing elements the MPC program
+requires.
