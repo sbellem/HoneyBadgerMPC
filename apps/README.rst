@@ -163,8 +163,8 @@ Some key things are most certainly missing, some of which are:
   the client's ethereum public key ...`.
 
 
-Ratelang: Vyper and HoneyBadger meet
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ratelang: Vyper + HoneyBadgerMPC
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Ratelang is the current codename for this somewhat hybrid language that
 contains Ethereum's smart contract Vyper language and Python-like MPC program
 definitions.
