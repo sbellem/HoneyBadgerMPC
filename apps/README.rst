@@ -271,4 +271,78 @@ key/value (LevelDB) store.
 
 MPC program execution
 """""""""""""""""""""
+An MPC server runs one main loop to mix batches of messages sent by clients.
+In this context, each loop corresponds to a round, or epoch, meaning that
+for each batch of messages that are mixed, a round is completed. In order
+to know whether a mixing round should be started, a background loop is run
+which checks whether there are enough client messages ready and preprocessing
+elements.
 
+.. rubric:: initiating a mixing round
+
+Although each MPC server executes this loop, only one player is needed to
+initiate a round. Once a round has been initiated by one player, the
+attempts of other players will fail, for that particular round.
+
+.. code-block:: python
+    
+    async def initiate_mixing_round(self):
+        K = self.contract.K()  # noqa: N806
+        while True:
+            while True:
+                inputs_ready = self.contract.caller.inputs_ready()
+                mixes_avail = self.contract.caller.mixes_available()
+                if inputs_ready >= K and mixes_avail >= 1:
+                    break
+                await asyncio.sleep(5)
+
+            tx_hash = self.contract.caller(
+                {"from": self.w3.eth.accounts[0]}
+            ).initiate_mpc()
+            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
+            await asyncio.sleep(10)
+
+.. rubric:: main loop: executing the multiparty computation
+
+.. code-block:: python
+
+    async def mix(self):
+        K = self.contract.caller.K()
+        epoch = 0
+        while True:
+
+            # wait for round to be started
+            while True:
+                epochs_initiated = self.contract.caller.epochs_initiated()
+                if epochs_initiated > epoch:
+                    break
+                await asyncio.sleep(5)
+
+            # read client masked inputs from contract
+            # get share of input
+            message_shares = []
+            for idx in range(epoch * K, (epoch + 1) * K):
+                masked_message, mask_id = self.contract.caller.input_queue(idx)
+                inputmask = self.elements["inputmasks"][mask_id]
+                msg_share = masked_message - inputmask
+                message_shares.append(msg_share)
+
+            # run MPC program
+            ctx = Mpc(self.prog, message_shares)
+            result = await ctx.run()
+
+            # propose output to contract
+            tx_hash = self.contract.caller(
+                {"from": self.w3.eth.accounts[self.myid]}
+            ).propose_output(epoch, result)
+
+            # wait for tx
+            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
+
+            # retrieve output from contract event
+            rich_logs = self.contract.events.MpcOutput().processReceipt(tx_receipt)
+            if rich_logs:
+                epoch = rich_logs[0]["args"]["epoch"]
+                output = rich_logs[0]["args"]["output"]
+
+            epoch += 1
