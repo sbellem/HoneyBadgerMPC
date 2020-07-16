@@ -186,6 +186,10 @@ abstraction would look like:
 
 .. code-block:: python
 
+    K: constant(uint256) = 32  # mix size
+    PER_MIX_TRIPLES: constant(uint256) = (K / 2) * 5 * 5
+    PER_MIX_BITS: constant(uint256) = (K / 2) * 5 * 5
+
     @mpc(pp_elements=('bits', 'triples')
     async def prog(sharearray: shares):
         mixed_shares = await shares.mix(algo='butterfly')
@@ -195,3 +199,76 @@ The ``@mpc`` decorator's key role is to identify this code as MPC code,
 meaning "not" Vyper (Ethereum) code. The ``@mpc`` decorator can also be
 passed arguments to specify which preprocessing elements the MPC program
 requires.
+
+Information/Program Flow
+------------------------
+There are 3 types of "actors" to consider:
+
+* clients
+* MPC players
+* Ethereum blockchain
+
+The ethereum blockchain may treated as "trusted" entity that plays an
+orchestrating or coordinating role. In a way it acts as a state machine,
+ensuring that the clients and MPC players proceed in lock steps according to
+the intended protocol.
+
+client
+^^^^^^
+A client wishing to send a message does the following:
+
+* [comm with ETH] Wait for input masks to be available by querying the Ethereum contract.
+  (state check - contract func: ``inputmasks_available()``)
+* [comm with ETH] Reserve an input mask once possible, by committing a transaction to the
+  Ethereum contract. (transaction - contract func: ``reserve_inputmask()``)
+* [comm with MPC] Once the transaction has gone through, request the input mask shares
+  from each MPC server.
+* [local] Privately reconstruct the input mask.
+* [local] Mask the message.
+* [comm with ETH] Send the masked message to the contract. (transaction -
+  contract func: ``submit_message()``)
+
+MPC server
+^^^^^^^^^^
+An MPC server runs the following 3 processes simulataneously:
+
+* offline preprocessing phase -- requires communication with other MPC players
+* HTTP server to handle client requests for input masks (shares) -- requires
+  communication with clients (listening to incoming requests and replying to
+  the requests, i.e. receive and send)
+* MPC program execution -- requires communication with other MPC players
+
+offline preprocessing phase
+"""""""""""""""""""""""""""
+MPC servers run an "offline" preprocessing phase in the background to keep
+a sufficient buffer of preprocessing elements for the multi-party computation
+and for random shares used by clients to mask their inputs. The MPC servers
+periodically submit a "preprocessing" report to an Ethereum contract. This
+report enables to clients to check whether there are input masks available.
+
+* [comm with MPC players] Generate a batch of preprocessing elements.
+* [comm with ETH] After a batch has been generated, submit a preprocessing
+  report to the Ethereum smart contract to update the quantity of
+  preprocessing elements that are available. (transaction - contract func:
+  ``preprocess_report()``)
+* [local] Each MPC server stores the preprocessing elements (shares) it has
+  generated in its local key/value (LevelDB) store.
+
+The Ethereum contract maintains the "state" of the preprocessing elements that
+are available for usage, and those that have been used. This "state" is
+consulted by both clients and MPC players. The clients consult this state
+to check whether input masks are available meanwhile MPC players consult this
+state to know whether they should generate more batches of preprocessing
+elements.
+
+Handling client requests
+""""""""""""""""""""""""
+This background task does not require any interaction with the Ethereum
+contract. A simple HTTP server runs continuously, listening to incoming
+client requests for input mask shares. Input masks are identified and
+requested via a unique id, which MPC servers use to fetch from their local
+key/value (LevelDB) store.
+
+MPC program execution
+"""""""""""""""""""""
+
