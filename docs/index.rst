@@ -28,7 +28,7 @@
     :maxdepth: 1
     :caption: Apps
 
-    apps/auctions
+    apps/index
 
 .. toctree::
     :maxdepth: 1

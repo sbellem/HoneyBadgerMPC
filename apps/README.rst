@@ -228,6 +228,11 @@ A client wishing to send a message does the following:
 * [comm with ETH] Send the masked message to the contract. (transaction -
   contract func: ``submit_message()``)
 
+.. figure:: ../_static/client-seq-diagram.png
+
+    Client sending a message to the Ethereum contract.
+
+
 MPC server
 ^^^^^^^^^^
 An MPC server runs the following 3 processes simulataneously:
@@ -260,6 +265,15 @@ consulted by both clients and MPC players. The clients consult this state
 to check whether input masks are available meanwhile MPC players consult this
 state to know whether they should generate more batches of preprocessing
 elements.
+
+Contract functions which are invoked during the preprocessing phase:
+
+* ``pp_elems_available()``
+* ``preprocess_report()``
+
+.. figure:: ../_static/preprocessing-seq-diagram.png
+
+    Preprocessing phase coordinated with an Ethereum smart contract.
 
 Handling client requests
 """"""""""""""""""""""""
@@ -316,7 +330,6 @@ attempts of other players will fail, for that particular round.
                 epochs_initiated = self.contract.caller.epochs_initiated()
                 if epochs_initiated > epoch:
                     break
-                await asyncio.sleep(5)
 
             # read client masked inputs from contract
             # get share of input
@@ -328,8 +341,7 @@ attempts of other players will fail, for that particular round.
                 message_shares.append(msg_share)
 
             # run MPC program
-            ctx = Mpc(self.prog, message_shares)
-            result = await ctx.run()
+            result = await MPC(self.prog, message_shares).run()
 
             # propose output to contract
             tx_hash = self.contract.caller(
@@ -346,3 +358,27 @@ attempts of other players will fail, for that particular round.
                 output = rich_logs[0]["args"]["output"]
 
             epoch += 1
+
+.. figure:: ../_static/mpc-exec-seq-diagram.png
+
+    MPC execution phase coordinated with an Ethereum smart contract.
+
+
+Ethereum contract
+^^^^^^^^^^^^^^^^^
+The contract defines the following key functions and data structures:
+
+**data structures**
+
+* ``InputQueue``: stores the masked messages submitted by clients
+* ``PreProcessCount``: stores the counts of preprocessing elements
+* ``OutputVotes``: stores votes for each round
+
+**functions**
+
+* ``inputmasks_available()``
+* ``reserve_inputmask()``
+* ``initiate_mpc()``
+* ``propose_output()``
+* ``inputs_ready()``
+* ``pp_elems_available``

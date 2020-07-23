@@ -22,7 +22,6 @@ struct OutputHashes:
     hashes: bytes32[100]
     size: uint256
 
-
 # FIXME A map may be enough.
 struct OutputVotes:
     votes: uint256[100]

@@ -2,10 +2,6 @@ import asyncio
 import logging
 import pickle
 
-from web3.contract import ConciseContract
-
-from apps.toolkit.utils import wait_for_receipt
-
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF
 from honeybadgermpc.mpc import Mpc
@@ -121,14 +117,14 @@ class MPCProgRunner:
     async def _mpc_loop(self):
         logging.info("MPC loop started ...")
         # Task 3. Participating in MPC epochs
-        contract_concise = ConciseContract(self.contract)
-        n = contract_concise.n()
-        t = contract_concise.t()
-        K = contract_concise.K()  # noqa: N806
+        # contract_concise = ConciseContract(self.contract)
+        n = self.contract.caller.n()
+        t = self.contract.caller.t()
+        K = self.contract.caller.K()  # noqa: N806
 
         # XXX asynchromix
-        PER_MIX_TRIPLES = contract_concise.PER_MIX_TRIPLES()  # noqa: N806
-        PER_MIX_BITS = contract_concise.PER_MIX_BITS()  # noqa: N806
+        PER_MIX_TRIPLES = self.contract.caller.PER_MIX_TRIPLES()  # noqa: N806
+        PER_MIX_BITS = self.contract.caller.PER_MIX_BITS()  # noqa: N806
         pp_elements = PreProcessedElements()
         # deletes sharedata/ if present
         pp_elements.clear_preprocessing()
@@ -140,7 +136,7 @@ class MPCProgRunner:
             # 3.a. Wait for the next MPC to be initiated
             while True:
                 logging.info(f"waiting for epoch {epoch} to be initiated ...")
-                epochs_initiated = contract_concise.epochs_initiated()
+                epochs_initiated = self.contract.caller.epochs_initiated()
                 logging.info(
                     f"result of querying contract for epochs initiated: {epochs_initiated}"
                 )
@@ -152,7 +148,9 @@ class MPCProgRunner:
             # Get the public input (masked message)
             inputs = []
             for idx in range(epoch * K, (epoch + 1) * K):
-                masked_message_bytes, inputmask_idx = contract_concise.input_queue(idx)
+                masked_message_bytes, inputmask_idx = self.contract.caller.input_queue(
+                    idx
+                )
                 logging.info(f"masked_message_bytes: {masked_message_bytes}")
                 logging.info(f"inputmask_idx: {inputmask_idx}")
                 masked_message = field(int.from_bytes(masked_message_bytes, "big"))
@@ -205,7 +203,7 @@ class MPCProgRunner:
             tx_hash = self.contract.functions.propose_output(epoch, result).transact(
                 {"from": self.w3.eth.accounts[self.myid]}
             )
-            tx_receipt = await wait_for_receipt(self.w3, tx_hash)
+            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
             rich_logs = self.contract.events.MpcOutput().processReceipt(tx_receipt)
             if rich_logs:
                 epoch = rich_logs[0]["args"]["epoch"]
@@ -219,8 +217,9 @@ class MPCProgRunner:
     async def _mpc_initiate_loop(self):
         logging.info("MPC initiator loop started ...")
         # Task 4. Initiate MPC epochs
-        contract_concise = ConciseContract(self.contract)
-        K = contract_concise.K()  # noqa: N806
+        # contract_concise = ConciseContract(self.contract)
+        # K = contract_concise.K()  # noqa: N806
+        K = self.contract.caller.K()  # noqa: N806
         epoch = None
         while True:
             logging.info(f"looping to initiate MPC for epoch {epoch} ...")
@@ -228,11 +227,13 @@ class MPCProgRunner:
             while True:
                 logging.info("waiting loop for enough inputs and mixes ready ...")
                 logging.info("querying contract for inputs_ready()")
-                inputs_ready = contract_concise.inputs_ready()
+                # inputs_ready = contract_concise.inputs_ready()
+                inputs_ready = self.contract.caller.inputs_ready()
                 logging.info(f"number of inputs ready: {inputs_ready}")
 
                 logging.info("querying contract for mixes_available()")
-                mixes_avail = contract_concise.mixes_available()
+                # mixes_avail = contract_concise.mixes_available()
+                mixes_avail = self.contract.caller.mixes_available()
                 logging.info(f"number of mixes available: {mixes_avail}")
                 if inputs_ready >= K and mixes_avail >= 1:
                     break
@@ -250,7 +251,7 @@ class MPCProgRunner:
                 # between the servers.
                 logging.debug(err)
                 continue
-            tx_receipt = await wait_for_receipt(self.w3, tx_hash)
+            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
             rich_logs = self.contract.events.MpcEpochInitiated().processReceipt(
                 tx_receipt
             )
