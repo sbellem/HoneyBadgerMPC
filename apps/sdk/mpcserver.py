@@ -11,7 +11,7 @@ have already been unmasked ...
 """
 import logging  # noqa F401 - importing for contract
 
-from apps.toolkit.utils import compile_ratel_contract, fetch_contract
+from apps.sdk.utils import compile_ratel_contract, fetch_contract
 
 from honeybadgermpc.utils.misc import _get_pubsub_channel
 
@@ -169,10 +169,10 @@ if __name__ == "__main__":
 
     import toml
 
-    from apps.toolkit.httpserver import HTTPServer
-    from apps.toolkit.preprocessor import PreProcessor
-    from apps.toolkit.parsers import ServerArgumentParser
-    from apps.toolkit.mpcprogrunner import MPCProgRunner
+    from apps.sdk.httpserver import HTTPServer
+    from apps.sdk.preprocessor import PreProcessor
+    from apps.sdk.parsers import ServerArgumentParser
+    from apps.sdk.mpcprogrunner import MPCProgRunner
 
     # arg parsing
     parser = ServerArgumentParser()

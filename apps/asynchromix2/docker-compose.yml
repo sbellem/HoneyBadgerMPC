@@ -20,7 +20,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - eth.blockchain.io
-    command: ["./apps/toolkit/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/toolkit/coordinator.py"]
+    command: ["./apps/sdk/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/sdk/coordinator.py"]
 
   hbmpc.peer0.io:
     image: honeybadgermpc-local
@@ -36,7 +36,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/toolkit/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
+    command: ["./apps/sdk/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
 
   hbmpc.peer1.io:
     image: honeybadgermpc-local
@@ -52,7 +52,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/toolkit/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
+    command: ["./apps/sdk/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
 
   hbmpc.peer2.io:
     image: honeybadgermpc-local
@@ -68,7 +68,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/toolkit/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
+    command: ["./apps/sdk/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
 
   hbmpc.peer3.io:
     image: honeybadgermpc-local
@@ -84,7 +84,7 @@ services:
       - /usr/src/HoneyBadgerMPC/honeybadgermpc/ntl  # Directory _not_ mounted from host
     depends_on:
       - hbmpc.coordinator.io
-    command: ["./apps/toolkit/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
+    command: ["./apps/sdk/wait-for-it.sh", "eth.blockchain.io:8545", "--", "python", "apps/asynchromix2/server.py"]
 
   hbmpc.client.io:
     image: honeybadgermpc-local
@@ -103,4 +103,4 @@ services:
       - hbmpc.peer1.io
       - hbmpc.peer2.io
       - hbmpc.peer3.io
-    command: ["./apps/toolkit/wait-for-it.sh", "hbmpc.peer3.io:8080", "--", "python", "apps/toolkit/client.py", "--config-file", "~/.hbmpc/config.toml"]
+    command: ["./apps/sdk/wait-for-it.sh", "hbmpc.peer3.io:8080", "--", "python", "apps/sdk/client.py", "--config-file", "~/.hbmpc/config.toml"]

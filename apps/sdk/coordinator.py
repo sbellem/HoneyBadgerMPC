@@ -7,7 +7,7 @@ import toml
 
 from web3 import HTTPProvider, Web3
 
-from apps.toolkit.utils import create_and_deploy_contract
+from apps.sdk.utils import create_and_deploy_contract
 
 PARENT_DIR = Path(__file__).resolve().parent
 

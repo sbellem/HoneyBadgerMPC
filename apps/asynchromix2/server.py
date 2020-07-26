@@ -3,11 +3,12 @@ if __name__ == "__main__":
 
     import toml
 
-    from apps.toolkit.httpserver import HTTPServer
-    from apps.toolkit.mpcserver import runner
-    from apps.toolkit.parsers import ServerArgumentParser
     from apps.asynchromix2.mpcprogrunner import MPCProgRunner
     from apps.asynchromix2.preprocessor import PreProcessor
+
+    from apps.sdk.httpserver import HTTPServer
+    from apps.sdk.mpcserver import runner
+    from apps.sdk.parsers import ServerArgumentParser
 
     from honeybadgermpc.progs.mixins.constants import MixinConstants
     from honeybadgermpc.progs.mixins.share_arithmetic import BeaverMultiplyArrays

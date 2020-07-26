@@ -203,7 +203,7 @@ class MPCProgRunner:
             tx_hash = self.contract.functions.propose_output(epoch, result).transact(
                 {"from": self.w3.eth.accounts[self.myid]}
             )
-            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
+            tx_receipt = self.w3.eth.waitForTransactionReceipt(tx_hash)
             rich_logs = self.contract.events.MpcOutput().processReceipt(tx_receipt)
             if rich_logs:
                 epoch = rich_logs[0]["args"]["epoch"]
@@ -233,7 +233,7 @@ class MPCProgRunner:
 
                 logging.info("querying contract for mixes_available()")
                 # mixes_avail = contract_concise.mixes_available()
-                mixes_avail = self.contract.caller.mixes_available()
+                mixes_avail = self.contract.caller.pp_elems_available()
                 logging.info(f"number of mixes available: {mixes_avail}")
                 if inputs_ready >= K and mixes_avail >= 1:
                     break
@@ -251,7 +251,7 @@ class MPCProgRunner:
                 # between the servers.
                 logging.debug(err)
                 continue
-            tx_receipt = await self.w3.eth.waitForTransactionReceipt(tx_hash)
+            tx_receipt = self.w3.eth.waitForTransactionReceipt(tx_hash)
             rich_logs = self.contract.events.MpcEpochInitiated().processReceipt(
                 tx_receipt
             )

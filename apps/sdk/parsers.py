@@ -8,8 +8,8 @@ import toml
 
 from web3 import HTTPProvider, Web3
 
-from apps.toolkit.db import LevelDB
-from apps.toolkit.utils import get_contract_address
+from apps.sdk.db import LevelDB
+from apps.sdk.utils import get_contract_address
 
 
 class ServerConfig:

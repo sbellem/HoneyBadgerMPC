@@ -5,7 +5,7 @@ import time
 
 from web3.contract import ConciseContract
 
-from apps.toolkit.utils import wait_for_receipt
+from apps.sdk.utils import wait_for_receipt
 
 from honeybadgermpc.elliptic_curve import Subgroup
 from honeybadgermpc.field import GF

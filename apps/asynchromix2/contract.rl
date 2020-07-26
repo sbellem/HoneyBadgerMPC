@@ -241,7 +241,7 @@ def PER_MIX_BITS() -> uint256:
 # Return the maximum number of mixes that can be run with the
 # available preprocessing
 @public
-def mixes_available() -> uint256:
+def pp_elems_available() -> uint256:
     triples_available: uint256 = self._preprocess.triples - self.preprocess_used.triples
     bits_available: uint256 = self._preprocess.bits - self.preprocess_used.bits
     return min(triples_available / _PER_MIX_TRIPLES, bits_available / _PER_MIX_BITS)
