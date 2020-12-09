@@ -34,7 +34,6 @@ class MPCServer:
         mpcprogrunner_class=None,
         mpc_config=None,
         http_context,
-        # prog=None,
     ):
         """
         Parameters
